@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Million dollar, baby !</title>
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        button {
+            background: rgb(80, 50, 100);
+            border: 1px solid transparent;            
+            border-radius: 0;
+            color: white;
+            padding: 12px 25px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: rgb(100, 80, 100);
+            color: rgb(180, 180, 180);
+            cursor: auto;
+        }
+
+        .modal {
+            position: absolute;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(20, 20, 50, 0.8);
+            display: flex;
+        }
+
+        .modal .content {
+            margin: auto;
+        }
+
+        .modal span {
+            color: white;
+        }
+
+        .sidebar {
+            z-index: 2;
+            position: absolute;
+            left: -200px;
+            width: 230px;
+            height: 100%;
+            display: flex;
+            transition: left 1s ease;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar .content {
+            padding: 0 10px;
+            border-right: 5px solid rgba(20, 20, 50, 0.2);
+            height: 100%;
+            width: 200px;
+            background: white;
+        }
+
+        .sidebar .hotspot {
+            height: 100%;
+            width: 20px;
+            margin: 5px;
+            cursor: pointer;
+            writing-mode: vertical-lr;
+            text-orientation: sideways-left;
+            text-align: center;
+            text-shadow: 0 0 5px rgb(80, 50, 100);
+        }
+
+        .sidebar .bottom {
+            position: absolute;
+            bottom: 0px;
+            padding-bottom: 10px;
+        }
+
+        .sidebar .bottom * {
+            width: 180px;
+        }
+
+        li.highlight {
+            text-decoration-line: underline;
+        }
+
+        .background {
+            position: absolute;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            left: 0;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"/>
+
+    <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+    <div id="enter-modal" class="modal">
+        <div class="content">
+                <span>Enter</span>
+                <input id="room-input" type="text" placeholder="Room name..." />
+                <span>as</span>
+                <input id="player-input" type="text" placeholder="Player name..." />
+                <button id="enter-button">OK</button>
+        </div>
+    </div>
+
+    <div id="menu-sidebar" class="sidebar">
+        <div class="content">
+            <p>Room: <span id="room-name"></span></p>
+            <p>Players:</p>
+            <ul id="player-list">
+                <li id="player-me" class="highlight"></li>
+            </ul>
+    
+            <div class="bottom">
+                <button id="start-button">Start</button>
+            </div>
+        </div>
+        <p id="menu-hotspot" class="hotspot">Tap to toggle menu</p>
+    </div>
+
+    <div id="map-background" class="background">
+    </div>
+
+    <script>
+        'use strict'
+
+        /**********************************************************************
+         *
+         * React-like application components
+         *
+         * Each component manages parts of the DOM via function calls.
+         * The DOM is seen as the single point of truth, components
+         * have no internal state.
+         *
+         *********************************************************************/
+
+        const mdbRoom = (() => {
+            const _span = document.getElementById('room-name');
+
+            this.get = () => { return _span.innerText; };
+
+            this.set = name => { _span.innerText = name; };
+
+            return this;
+        })();
+
+        const mdbPlayers = (() => {
+            const _ul = document.getElementById('player-list');
+            const _li = document.getElementById('player-me');
+
+            this.list = () => {
+                let l = [];
+                let nodes = _ul.getElementsByTagName('li');
+                for (let li of nodes) { l.push(li.innerText); }
+                return l;
+            };
+
+            this.add = (player, isMe) => {
+                if (isMe) { _li.innerText = player }
+                else { _ul.innerHTML += '<li>' + player + '</li>'; }
+            };
+
+            this.me = () => { return _li.innerText; };
+            
+            return this;
+        })();
+
+        const mdbMasterControl = (() => {
+            const _button = document.getElementById('start-button');
+            // rate at which the eye of the cyclones decreases
+            const _rate = 0.8;
+
+            this.isMaster = () => { return !_button.disabled; };
+
+            this.disable = () => { _button.disabled = true };
+
+            // computes random coordinates s.t. 
+            // r_i = 0.8 * r_{i-1} and
+            // area_i strictly in area_{i-1} 
+            this.pickMove = (previousMove) => {
+                // no next move below 1m radius
+                if (previousMove.radius < 1) return null;
+
+                let polar = {
+                    r: Math.random() * (1 - _rate) / 2 * previousMove.radius,
+                    theta: Math.random() * 2 * Math.PI
+                };
+                let cartesian = {
+                    x: polar.r * Math.cos(polar.theta),
+                    y: polar.r * Math.sin(polar.theta)
+                };
+                let c = [
+                    previousMove.coords[0] + (cartesian.y / 360000),
+                    previousMove.coords[1] + (cartesian.x / 360000)
+                ];
+                let r = _rate * previousMove.radius;
+
+                return { coords: c, radius: r };
+            };
+
+            return this;
+        })();
+
+        const mdbMap = (() => {
+            const _m = L.map('map-background');
+            // ssssssh. Don't tell.
+            const _token = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpej' +
+                           'Y4NXVycTA2emYycXBndHRqcmZ3N3gifQ.' +
+                           'rJcFIG214AriISLbB6B5aw';
+            // markers on the map indexed by player name (eye indexed by _eye)
+            const _markers = {};
+
+            const _style = {
+                eye: { color: '#909090', fillOpacity: 0.2, dashArray: '10px' },
+                player: { color: '#503264' },
+                error: { color: '#dd2222' }
+                // TODO out-of-the-game
+            };
+
+            let uri = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png' +
+                      '?access_token=' + _token;
+            let layer = L.tileLayer(uri, {
+                maxZoom: 19,
+                // TODO CC license attributions
+                id: 'mapbox.streets'
+            });
+            _m.addLayer(layer);
+            // Lyon, tavu
+            _m.setView([45.771774, 4.845743], 14);
+
+            this.moveEye = (coords, radius) => {
+                let e = _markers._eye;
+                if (!e) {
+                    let opts = Object.create(_style.eye);
+                    opts.radius = radius;
+                    e = L.circle(coords, opts).addTo(_m);
+                    _markers._eye = e;
+                }
+                e.setLatLng(coords);
+                e.setRadius(radius);
+            };
+
+            this.move = (player, coords) => {
+                let m = _markers[player];
+                if (!m) {
+                    let opts = _style.player;
+                    m = L.circleMarker(coords, opts).addTo(_m);
+                    _markers[player] = m;
+                } else if (m.frozen) {
+                    m.frozen = undefined;
+                    m.setStyle(_style.player);
+                }
+                m.setLatLng(coords);
+            };
+
+            this.freeze = player => {
+                let m = _markers[player];
+                if (m) {
+                    m.setStyle(_style.error);
+                    m.frozen = true;
+                }
+            };
+
+            this.center = coords => { _m.setView(coords); };
+
+            return this;
+        })();
+
+        /**********************************************************************
+         *
+         * UI and application events
+         *
+         *********************************************************************/
+
+        const allEvents = [
+            // a player enters the room
+            'mdbEnter',
+            // master recalls the list of players present in the room
+            'mdbRecallPresent',
+            // a player moves on the map
+            'mdbMove',
+            // the location of a player has been lost
+            'mdbMoveError',
+            // the game engine moves the eye of the cyclone
+            'mdbMoveEye',
+            'mdbX'
+        ];
+
+        window.addEventListener('mdbEnter', ev => {
+            if (ev.detail.player != mdbPlayers.me()) {
+                if (mdbMasterControl.isMaster()) {
+                    let otherEv = new CustomEvent('mdbRecallPresent', {
+                        detail: { present: mdbPlayers.list() }
+                    });
+                    window.dispatchEvent(otherEv);
+                }
+                
+                mdbPlayers.add(ev.detail.player, false);
+            } else {
+                let id = navigator.geolocation.watchPosition(pos => {
+                    let p = mdbPlayers.me();
+                    let coords = [pos.coords.latitude, pos.coords.longitude];
+
+                    let d = { detail: { player: p, coords: coords } };
+                    window.dispatchEvent(new CustomEvent('mdbMove', d));
+                }, (err) => {
+                    let p = mdbPlayers.me();
+                    let d = { detail: { player: p }};
+                    window.dispatchEvent(new CustomEvent('mdbMoveError', d));
+                    
+                    console.error(err.message);
+                });
+            }
+        });
+
+        window.addEventListener('mdbRecallPresent', ev => {
+            // TODO manage page reloading (duplicate entries/no entry)
+            if (!ev.detail.present.includes(mdbPlayers.me())) {
+                mdbMasterControl.disable();
+                ev.detail.present.forEach(p => mdbPlayers.add(p, false));
+            }
+        }, { once: true });
+
+        window.addEventListener('mdbMove', ev => {
+            let p = ev.detail.player;
+            let coords = ev.detail.coords;
+            mdbMap.move(p, coords);
+
+            if (p == mdbPlayers.me()) {
+                mdbMap.center(coords);
+            }
+        });
+
+        window.addEventListener('mdbMoveError', ev => {
+            let p = ev.detail.player;
+            mdbMap.freeze(p);
+        });
+
+        window.addEventListener('mdbMoveEye', ev => {
+            let m = ev.detail.move;
+            mdbMap.moveEye(m.coords, m.radius);
+        });
+
+        document.getElementById('enter-button').onclick = ev => {
+            let pi = document.getElementById('player-input'),
+                ri = document.getElementById('room-input'),
+                em = document.getElementById('enter-modal'),
+                rn = document.getElementById('room-name');
+
+            // TODO normalize input (e.g. no '_')
+            let room = ri.value;
+            let me = pi.value;
+            mdbRoom.set(room);
+            mdbPlayers.add(me, true);
+
+            window.dispatchEvent(new CustomEvent('mqttSubscribe'));
+            let d = { detail: { player: me } };
+            window.dispatchEvent(new CustomEvent('mdbEnter', d));
+
+            // close modal
+            em.parentElement.removeChild(em);
+        };
+
+        document.getElementById('start-button').onclick = ev => {
+            // TODO first move should encompass all players
+            const stop = 100;
+            let move = { coords: [45.771774, 4.845743], radius: 5000 };
+            let id = window.setInterval(() => {
+                move = mdbMasterControl.pickMove(move);
+                if (move) {
+                    let d = { detail: { move: move } };
+                    window.dispatchEvent(new CustomEvent('mdbMoveEye', d));
+                } else {
+                    window.clearInterval(id);
+                }
+            }, 1000);
+        };
+
+        document.getElementById('menu-hotspot').onclick = ev => {
+            let classes = document.getElementById('menu-sidebar').classList;
+            // toggle menu
+            if (classes.contains('open')) {
+                classes.remove('open');
+            } else {
+                classes.add('open');
+            }
+        };
+
+        /**********************************************************************
+         *
+         * MQTT client
+         *
+         * Proxy between all players that transforms MQTT messages
+         * into events dispatched via the window object.
+         *
+         *********************************************************************/
+
+        // per-window identification to avoid pub/sub loops
+        const mqttId = Math.random();
+         // MQTT topic for the room
+        const mdbTopic = () => { return 'oasisisgood/mdb/' + mdbRoom.get(); }
+
+        // TODO potential endpoints:
+        //  + ws://iot.eclipse.org:80/ws
+        //  - ws://test.mosquitto.org:8080
+        //  - wss://iot.eclipse.org:443/ws
+        //  - ws://test.mosca.io/
+        //  - ws://q.emqtt.com:8083
+        //  - ws://mqtt.flespi.io:80
+        //  - ws://broker.hivemq.com:8000
+        //  - ws://mqtt.dioty.co:8080
+        //  - ws://mqtt.fluux.io
+        let mqttClient = mqtt.connect('ws://iot.eclipse.org:80/ws');
+        mqttClient.on('connect', function() { console.log('connected'); });
+
+        mqttClient.on('message', (topic, msg) => {
+            console.log('>> (MQTT) ' + topic + ' | ' + msg.toString());
+            
+            let ev = JSON.parse(msg);
+
+            if (topic === mdbTopic() && ev.detail.from != mqttId) {
+                window.dispatchEvent(new CustomEvent(ev.type, { detail: ev.detail }));
+
+                console.log('<< (DOM) ' + ev.type + ' | ' + JSON.stringify(ev.detail));
+            }
+        });
+
+        allEvents.forEach(type => {
+            window.addEventListener(type, ev => {
+                console.log('>> (DOM) ' + ev.type + ' | ' + JSON.stringify(ev.detail));
+
+                if (!ev.detail.from) {
+                    ev = { type: ev.type, detail: ev.detail }; // copy
+                    ev.detail.from = mqttId;
+                    let msg = JSON.stringify(ev);
+    
+                    let topic = mdbTopic();                
+                    mqttClient.publish(topic, msg, function(err) {
+                        if (err) console.error(err);
+                    });
+        
+                    console.log('<< (MQTT) ' + topic + ' | ' + msg);
+                }
+            });
+        });
+
+        window.addEventListener('mqttSubscribe', ev => {
+            mqttClient.subscribe(mdbTopic(), err => {
+                if (err) console.error(err);
+            });
+        });
+    </script>
+</body>
+</html>
