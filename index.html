@@ -128,7 +128,8 @@
             <ul id="player-list">
                 <li id="player-me" class="highlight"></li>
             </ul>
-    
+            <button id="area-button">Area</button>
+
             <div class="bottom">
                 <button id="start-button">Start</button>
             </div>
@@ -191,13 +192,18 @@
         })();
 
         const mdbMasterControl = (() => {
-            const _button = document.getElementById('start-button');
+            const start_button = document.getElementById('start-button');
+            const area_button = document.getElementById('area-button');
+            
+            // Define area //
+
             // rate at which the eye of the cyclones decreases
             const _rate = 0.8;
 
-            this.isMaster = () => { return !_button.disabled; };
+            // Button start enabled if player is master //
+            this.isMaster = () => { return !start_button.disabled; };
 
-            this.disable = () => { _button.disabled = true };
+            this.disable = () => { start_button.disabled = true };
 
             // computes random coordinates s.t. 
             // r_i = 0.8 * r_{i-1} and
@@ -237,6 +243,7 @@
 
             const _style = {
                 eye: { color: '#909090', fillOpacity: 0.2, dashArray: '10px' },
+                area_circle: { color: '#503264', fillOpacity: 0.2, dashArray: '10px' },
                 player: { color: '#503264' },
                 error: { color: '#dd2222' }
                 // TODO out-of-the-game
@@ -251,7 +258,20 @@
             });
             _m.addLayer(layer);
             // Lyon, tavu
-            _m.setView([45.771774, 4.845743], 14);
+            _m.setView(Lyon_coord, 14);
+
+            // ---- Create/change circular zone on click ---- //
+            this.create_change_area_circle = (coords, radius) => {
+                let e = _markers._area_circle;
+                if (!e) {
+                    let opts = Object.create(_style.area_circle);
+                    opts.radius = radius;
+                    e = L.circle(coords, opts).addTo(_m);
+                    _markers._area_circle = e;
+                }
+                e.setLatLng(coords);
+                e.setRadius(radius);
+            };
 
             this.moveEye = (coords, radius) => {
                 let e = _markers._eye;
@@ -310,7 +330,8 @@
             'mdbMoveError',
             // the game engine moves the eye of the cyclone
             'mdbMoveEye',
-            'mdbX'
+            // click on the map
+            'mdbClick'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -368,6 +389,11 @@
             mdbMap.moveEye(m.coords, m.radius);
         });
 
+        window.addEventListener('mdbClick', ev => {
+            console.log(ev.detail.caca);
+        });
+
+
         document.getElementById('enter-button').onclick = ev => {
             let pi = document.getElementById('player-input'),
                 ri = document.getElementById('room-input'),
@@ -388,10 +414,24 @@
             em.parentElement.removeChild(em);
         };
 
+        // ---- Create/change circular zone on click ---- //
+        document.getElementById('area-button').onclick = ev => {
+
+            // Click on the map
+            // mdbMap.on('click', );
+            let d = { detail: { caca: "CACA" } };
+            window.dispatchEvent(new CustomEvent('mdbClick', d));
+
+            let area_circle = { coords: Lyon_coord, radius: 5000 }
+            mdbMap.create_change_area_circle(area_circle.coords, area_circle.radius);
+
+
+        };
+
         document.getElementById('start-button').onclick = ev => {
             // TODO first move should encompass all players
             const stop = 100;
-            let move = { coords: Lyon_coord, radius: 5000 };
+            let move = { coords: Lyon_coord, radius: 2000 };
             let id = window.setInterval(() => {
                 move = mdbMasterControl.pickMove(move);
                 if (move) {
