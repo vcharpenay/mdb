@@ -148,6 +148,10 @@
         **********************************************************************/
         
         var Lyon_coord = [45.771774, 4.845743];
+        var area_circle_radius = 3500; // meters
+
+        // ---- Buttons ---- //
+        var Area_button_activated = false; 
         
 
         /**********************************************************************
@@ -261,16 +265,30 @@
             _m.setView(Lyon_coord, 14);
 
             // ---- Create/change circular zone on click ---- //
-            this.create_change_area_circle = (coords, radius) => {
-                let e = _markers._area_circle;
-                if (!e) {
-                    let opts = Object.create(_style.area_circle);
-                    opts.radius = radius;
-                    e = L.circle(coords, opts).addTo(_m);
-                    _markers._area_circle = e;
+            this.create_change_area_circle = (radius) => {
+                
+                if (Area_button_activated){
+                // Listen to click on the map //
+                _m.on('click', (eventObject) => {
+                    let position = eventObject.latlng; // et boum
+                    console.log('position', position);
+                    
+                    let e = _markers._area_circle;
+                    if (!e) {
+                        let opts = Object.create(_style.area_circle);
+                        opts.radius = radius;
+                        e = L.circle(position, opts).addTo(_m);
+                        _markers._area_circle = e;
+                    }
+                    e.setLatLng(position);
+                    e.setRadius(radius);
+                    })
                 }
-                e.setLatLng(coords);
-                e.setRadius(radius);
+
+                else{
+                    // Stop listening to click //
+                    _m.off('click');
+                }
             };
 
             this.moveEye = (coords, radius) => {
@@ -329,9 +347,7 @@
             // the location of a player has been lost
             'mdbMoveError',
             // the game engine moves the eye of the cyclone
-            'mdbMoveEye',
-            // click on the map
-            'mdbClick'
+            'mdbMoveEye'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -389,11 +405,6 @@
             mdbMap.moveEye(m.coords, m.radius);
         });
 
-        window.addEventListener('mdbClick', ev => {
-            console.log(ev.detail.caca);
-        });
-
-
         document.getElementById('enter-button').onclick = ev => {
             let pi = document.getElementById('player-input'),
                 ri = document.getElementById('room-input'),
@@ -417,14 +428,15 @@
         // ---- Create/change circular zone on click ---- //
         document.getElementById('area-button').onclick = ev => {
 
-            // Click on the map
-            // mdbMap.on('click', );
-            let d = { detail: { caca: "CACA" } };
-            window.dispatchEvent(new CustomEvent('mdbClick', d));
-
-            let area_circle = { coords: Lyon_coord, radius: 5000 }
-            mdbMap.create_change_area_circle(area_circle.coords, area_circle.radius);
-
+            // Change status of Area button //
+            if(Area_button_activated){
+                Area_button_activated = false;
+                }
+            else{
+                Area_button_activated = true;
+            }
+            // Create or change Area circle //
+            mdbMap.create_change_area_circle(area_circle_radius);
 
         };
 
