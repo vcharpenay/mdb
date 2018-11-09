@@ -262,7 +262,9 @@
                 let m = _markers[player];
                 if (!m) {
                     let opts = _style.player;
-                    m = L.circleMarker(coords, opts).addTo(_m);
+                    m = L.circleMarker(coords, opts)
+                            .bindPopup(player.toString()) // Popup player's name onclick
+                            .addTo(_m);
                     _markers[player] = m;
                 } else if (m.frozen) {
                     m.frozen = undefined;
