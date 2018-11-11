@@ -153,6 +153,7 @@
         // ---- Buttons ---- //
         var Area_button_activated = false; 
         
+        var area_defined = false;
 
         /**********************************************************************
          *
@@ -198,16 +199,30 @@
         const mdbMasterControl = (() => {
             const start_button = document.getElementById('start-button');
             const area_button = document.getElementById('area-button');
-            
-            // Define area //
 
             // rate at which the eye of the cyclones decreases
             const _rate = 0.8;
 
-            // Button start enabled if player is master //
-            this.isMaster = () => { return !start_button.disabled; };
+            // If player is master, status of buttons //
+            this.ButtonsStatusMaster = () => { 
+                start_button.disabled = true;
+                area_button.disabled = false;
+            };
+            // Test if player is master //
+            this.isMaster = () => { 
+                return !area_button.disabled; 
+                };
 
-            this.disable = () => { start_button.disabled = true };
+            // Enable start button //
+            this.start_button_enable = () => {
+                start_button.disabled = false;
+            };
+
+            // Disable buttons //
+            this.disable = () => { 
+                start_button.disabled = true;
+                area_button.disabled = true;
+                };
 
             // computes random coordinates s.t. 
             // r_i = 0.8 * r_{i-1} and
@@ -270,16 +285,19 @@
                 if (Area_button_activated){
                 // Listen to click on the map //
                 _m.on('click', (eventObject) => {
-                    let position = eventObject.latlng; // et boum
-                    console.log('position', position);
+                    let position = eventObject.latlng;
+                    // console.log('position', position);
                     
                     let e = _markers._area_circle;
+                    // If circle is undefined //
                     if (!e) {
                         let opts = Object.create(_style.area_circle);
                         opts.radius = radius;
                         e = L.circle(position, opts).addTo(_m);
                         _markers._area_circle = e;
+                        area_defined = true; // area is defined
                     }
+                    // Acutalize position and radius //
                     e.setLatLng(position);
                     e.setRadius(radius);
                     })
@@ -338,7 +356,7 @@
          *********************************************************************/
 
         const allEvents = [
-            // a player enters the room
+            // a player/master enters the room
             'mdbEnter',
             // master recalls the list of players present in the room
             'mdbRecallPresent',
@@ -351,6 +369,7 @@
         ];
 
         window.addEventListener('mdbEnter', ev => {
+            // If a player join a room already created //
             if (ev.detail.player != mdbPlayers.me()) {
                 if (mdbMasterControl.isMaster()) {
                     let otherEv = new CustomEvent('mdbRecallPresent', {
@@ -360,7 +379,10 @@
                 }
                 
                 mdbPlayers.add(ev.detail.player, false);
-            } else {
+            } 
+            // If it is the first player in the room: the master //
+            else {
+                mdbMasterControl.ButtonsStatusMaster() // Adjust buttons status
                 let id = navigator.geolocation.watchPosition(pos => {
                     let p = mdbPlayers.me();
                     let coords = [pos.coords.latitude, pos.coords.longitude];
@@ -416,7 +438,7 @@
             let me = pi.value;
             mdbRoom.set(room);
             mdbPlayers.add(me, true);
-
+            
             window.dispatchEvent(new CustomEvent('mqttSubscribe'));
             let d = { detail: { player: me } };
             window.dispatchEvent(new CustomEvent('mdbEnter', d));
@@ -437,6 +459,10 @@
             }
             // Create or change Area circle //
             mdbMap.create_change_area_circle(area_circle_radius);
+            // Enable start button when Area button is disactivated //
+            if (!Area_button_activated && area_defined) {
+                mdbMasterControl.start_button_enable();
+            }
 
         };
 
