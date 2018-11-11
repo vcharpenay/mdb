@@ -128,6 +128,7 @@
             <ul id="player-list">
                 <li id="player-me" class="highlight"></li>
             </ul>
+            <p>Timer: <span id="timer"></span> </p>
             <button id="area-button">Area</button>
 
             <div class="bottom">
@@ -251,6 +252,18 @@
             return this;
         })();
 
+        const mdbTimer = (() => {
+            const _span = document.getElementById('timer');
+
+            this.get = () => { return _span.innerText; };
+
+            this.set = name => { _span.innerText = name; };
+
+            return this;
+        })();
+
+
+
         const mdbMap = (() => {
             const _m = L.map('map-background');
             // ssssssh. Don't tell.
@@ -263,6 +276,7 @@
             const _style = {
                 eye: { color: '#909090', fillOpacity: 0.2, dashArray: '10px' },
                 area_circle: { color: '#503264', fillOpacity: 0.2, dashArray: '10px' },
+                next_circle_area: { color: '#503264', fillOpacity: 0.2, dashArray: '10px' },
                 player: { color: '#503264' },
                 error: { color: '#dd2222' }
                 // TODO out-of-the-game
@@ -279,6 +293,9 @@
             // Lyon, tavu
             _m.setView(Lyon_coord, 14);
 
+            // ---- Return markers on the map ---- //
+            this.get_marker = () => {return _markers;} 
+
             // ---- Create/change circular zone on click ---- //
             this.create_change_area_circle = (radius) => {
                 
@@ -286,8 +303,6 @@
                 // Listen to click on the map //
                 _m.on('click', (eventObject) => {
                     let position = eventObject.latlng;
-                    // console.log('position', position);
-                    
                     let e = _markers._area_circle;
                     // If circle is undefined //
                     if (!e) {
@@ -307,6 +322,22 @@
                     // Stop listening to click //
                     _m.off('click');
                 }
+            };
+
+            this.next_circle_area = (coords, radius) => {
+                let position = coords;
+                let e = _markers._next_circle_area;
+                    // If circle is undefined //
+                    if (!e) {
+                        let opts = Object.create(_style.next_circle_area);
+                        opts.radius = radius;
+                        e = L.circle(position, opts).addTo(_m);
+                        _markers._next_circle_area = e;
+                        }
+                        
+                    // Actualize position and radius //
+                    e.setLatLng(position);
+                    e.setRadius(radius);
             };
 
             this.moveEye = (coords, radius) => {
@@ -468,17 +499,28 @@
 
         document.getElementById('start-button').onclick = ev => {
             // TODO first move should encompass all players
-            const stop = 100;
-            let move = { coords: Lyon_coord, radius: 2000 };
-            let id = window.setInterval(() => {
-                move = mdbMasterControl.pickMove(move);
-                if (move) {
-                    let d = { detail: { move: move } };
-                    window.dispatchEvent(new CustomEvent('mdbMoveEye', d));
-                } else {
-                    window.clearInterval(id);
-                }
-            }, 1000);
+            // const stop = 100;
+            // let move = { coords: Lyon_coord, radius: 2000 };
+            // let id = window.setInterval(() => {
+            //     move = mdbMasterControl.pickMove(move);
+            //     if (move) {
+            //         let d = { detail: { move: move } };
+            //         window.dispatchEvent(new CustomEvent('mdbMoveEye', d));
+            //     } else {
+            //         window.clearInterval(id);
+            //     }
+            // }, 1000);
+
+            // Get coords area_circle //
+            let coords_area_circle = mdbMap.get_marker()._area_circle.getLatLng();
+            
+            // Set Timer //
+            nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
+
+
+            // Create next_circle area //
+            mdbMap.next_circle_area(coords_area_circle, 2000);
+
         };
 
         document.getElementById('menu-hotspot').onclick = ev => {
