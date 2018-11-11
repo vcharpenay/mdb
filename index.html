@@ -128,7 +128,6 @@
             <ul id="player-list">
                 <li id="player-me" class="highlight"></li>
             </ul>
-            <p>Timer: <span id="timer"></span> </p>
             <button id="area-button">Area</button>
 
             <div class="bottom">
@@ -139,13 +138,17 @@
     </div>
 
     <div id="map-background" class="background">
+        <div class="leaflet-bottom leaflet-right">
+                <canvas id="myCanvas" width="150" height="450"></canvas>
+        </div>
+            
     </div>
 
     <script>
         'use strict'
 
         /**********************************************************************
-        * Variables
+        * VARIABLES
         **********************************************************************/
         
         var Lyon_coord = [45.771774, 4.845743];
@@ -155,6 +158,58 @@
         var Area_button_activated = false; 
         
         var area_defined = false;
+
+        // ---- Timer ---- //
+        var timer_id = "myCanvas";
+
+        var time_interval = 0.1; // sec
+        var time_decrease = 10; // sec
+        var nb_time_step = Math.floor(time_decrease/time_interval); // sec
+        var counter_time_step = 0;
+        var timer_value = time_decrease;
+        var str_timer_value;
+
+        var width_canvas = 200 // px
+        var height_canvas = 100 // px
+        var width_rect_timer = 150 // px
+        var height_rect_timer = 100 // px
+
+
+        /**********************************************************************
+        * FUNCTION
+        **********************************************************************/
+        
+        // Transform second in hours, minutes and seconds //
+        String.prototype.toHHMMSS = function () {
+            var sec_num = parseInt(this, 10);
+            var hours   = Math.floor(sec_num / 3600);
+            var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+            var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+            if (hours   < 10) {hours   = "0"+hours;}
+            if (minutes < 10) {minutes = "0"+minutes;}
+            if (seconds < 10) {seconds = "0"+seconds;}
+            return hours+':'+minutes+':'+seconds;
+        }
+
+        function loadTimer() {
+            var c = document.getElementById(timer_id);
+            var ctx = c.getContext("2d");
+            
+            // Parameters //
+            ctx.font = "20px Arial";
+            ctx.fillStyle="white";
+            ctx.fillRect(0,0,width_rect_timer, height_rect_timer);
+            ctx.fillStyle="black";
+
+            if (counter_time_step < nb_time_step-1) {
+                timer_value = timer_value -time_interval; // sec
+                console.log('timer_value', timer_value);
+                str_timer_value = timer_value.toString();
+                counter_time_step += 1;
+            }
+            ctx.fillText(str_timer_value.toHHMMSS(),0,80);
+        }
 
         /**********************************************************************
          *
@@ -251,18 +306,6 @@
 
             return this;
         })();
-
-        const mdbTimer = (() => {
-            const _span = document.getElementById('timer');
-
-            this.get = () => { return _span.innerText; };
-
-            this.set = name => { _span.innerText = name; };
-
-            return this;
-        })();
-
-
 
         const mdbMap = (() => {
             const _m = L.map('map-background');
@@ -511,11 +554,13 @@
             //     }
             // }, 1000);
 
+
+            // Set Timer //
+            loadTimer();
             // Get coords area_circle //
             let coords_area_circle = mdbMap.get_marker()._area_circle.getLatLng();
             
-            // Set Timer //
-            nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
+            //nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
 
 
             // Create next_circle area //
