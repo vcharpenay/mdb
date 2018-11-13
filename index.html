@@ -211,6 +211,93 @@
             ctx.fillText(str_timer_value.toHHMMSS(),0,80);
         }
 
+        function find_next_circle() {
+			var new_radius_next_circle = next_circle_area.getRadius() *next_circle_prop_smaller; 
+            var b = circle_area.getRadius() -new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
+            //var new_radius_next_circle = 50; 
+            //var b = 150 -new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
+            
+            // Distance between next_circle and the following //
+            distance_between_next_circles += distance_between_next_circles*next_circle_prop_smaller; 
+            //distance_between_next_circles = 40; 
+
+            // Check that distance_between_next_circles is still in the circle area // 
+            var c = distance_between_next_circles;
+            if (c > b){
+                c = b;
+                distance_between_next_circles = b;
+            } 
+
+            // Init params in while loop //
+            var counter_loop = 0;
+            var next_center_outside_area = true;
+            var max_counter_loop = 100;
+            var coord_temp; 
+
+            // Loop to find solution at the intersection of the circle and the area //
+            while (next_center_outside_area && counter_loop < max_counter_loop){
+                var deg = getRandomArbitrary(0,360);
+                coord_temp = getPoint(next_circle_area.getLatLng().lat, next_circle_area.getLatLng().lng, c, deg);
+                //console.log('coord_temp',coord_temp);
+                
+                var dist = getDistance_between_2_coord([circle_area_smaller.getLatLng().lat, circle_area_smaller.getLatLng().lng], [coord_temp.lat, coord_temp.lng])
+                //console.log('dist', counter_loop)
+                if (dist < b){
+                    next_center_outside_area = false;
+                }
+                counter_loop += 1;
+            }
+        return {coords: coord_temp, radius: new_radius_next_circle}
+
+        }
+				
+		function getPoint(lat, lng, r, deg) {
+	 	  lat2 = meter_to_lat_lng(r) * Math.cos(deg2rad(deg));
+	 	  lat2 += lat;
+	 	  lng2 = meter_to_lat_lng(r) * Math.sin(deg2rad(deg));
+	 	  lng2 = lng2 * (1 / Math.cos(deg2rad(lat2)));
+	 	  lng2 += lng;
+	 	  return {lat:lat2, lng:lng2};
+	 	}
+
+        function getDistance_between_2_coord(origin, destination) {
+            // return distance in meters
+            var lon1 = deg2rad(origin[1]),
+                lat1 = deg2rad(origin[0]),
+                lon2 = deg2rad(destination[1]),
+                lat2 = deg2rad(destination[0]);
+
+            var deltaLat = lat2 - lat1;
+            var deltaLon = lon2 - lon1;
+
+            var a = Math.pow(Math.sin(deltaLat/2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(deltaLon/2), 2);
+            var c = 2 * Math.asin(Math.sqrt(a));
+            return c * EARTH_RADIUS * 1000;
+        }
+
+        function dist_to_lat_or_lon(meter_dist){
+            lat_or_lon = meter_dist/(1000*EARTH_RADIUS);
+            return rad2deg(lat_or_lon);
+        }
+
+        function meter_to_lat_lng(meter){
+            lat_lng = meter/const_meter_lat_lng;
+            return lat_lng;
+        }
+
+        function deg2rad(deg) {
+            return deg * (Math.PI / 180);
+            }
+            
+        function rad2deg(rad) {
+            return rad * (180/Math.PI);
+            }
+            
+        function getRandomArbitrary(min, max) {
+            return Math.random() * (max - min) + min;
+            }
+
+
         /**********************************************************************
          *
          * React-like application components
@@ -559,13 +646,21 @@
 
         document.getElementById('start-button').onclick = ev => {
             
-            // Set Timer //
-            //loadTimer();
+            // Generate next circle serie //
+            
+
             // Get coords area_circle //
             let coords_area_circle = mdbMap.get_marker()._area_circle.getLatLng();
             let d = { detail: { coords: coords_area_circle, radius: 2000 } };
             // Create next_circle area //
             window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
+
+            // Inactivate buttons //
+            mdbMasterControl.disable();
+
+            // Set Timer //
+            //loadTimer();
+            
 
             //nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
         };
