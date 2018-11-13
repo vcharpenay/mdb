@@ -343,22 +343,22 @@
             this.create_change_area_circle = (radius) => {
                 
                 if (Area_button_activated){
-                // Listen to click on the map //
-                _m.on('click', (eventObject) => {
-                    let position = eventObject.latlng;
-                    let e = _markers._area_circle;
-                    // If circle is undefined //
-                    if (!e) {
-                        let opts = Object.create(_style.area_circle);
-                        opts.radius = radius;
-                        e = L.circle(position, opts).addTo(_m);
-                        _markers._area_circle = e;
-                        area_defined = true; // area is defined
-                    }
-                    // Acutalize position and radius //
-                    e.setLatLng(position);
-                    e.setRadius(radius);
-                    })
+                    // Listen to click on the map //
+                    _m.on('click', (eventObject) => {
+                        let position = eventObject.latlng;
+                        let e = _markers._area_circle;
+                        // If circle is undefined //
+                        if (!e) {
+                            let opts = Object.create(_style.area_circle);
+                            opts.radius = radius;
+                            e = L.circle(position, opts).addTo(_m);
+                            _markers._area_circle = e;
+                            area_defined = true; // area is defined
+                        }
+                        // Actualize position and radius //
+                        e.setLatLng(position);
+                        e.setRadius(radius);
+                        })
                 }
 
                 else{
@@ -439,7 +439,11 @@
             // the location of a player has been lost
             'mdbMoveError',
             // the game engine moves the eye of the cyclone
-            'mdbMoveEye'
+            'mdbMoveEye',
+            // Create the area circle
+            'mdbCreateAreaCircle',
+            // Next circle area
+            'mdbNextCircle'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -501,6 +505,17 @@
             mdbMap.moveEye(m.coords, m.radius);
         });
 
+        window.addEventListener('mdbCreateAreaCircle', ev => {
+            let radius = ev.detail.radius;
+            mdbMap.create_change_area_circle(radius);
+                });
+
+        window.addEventListener('mdbNextCircle', ev => {
+            let m = ev.detail;
+            mdbMap.next_circle_area(m.coords, m.radius);
+                });
+
+
         document.getElementById('enter-button').onclick = ev => {
             let pi = document.getElementById('player-input'),
                 ri = document.getElementById('room-input'),
@@ -532,7 +547,9 @@
                 Area_button_activated = true;
             }
             // Create or change Area circle //
-            mdbMap.create_change_area_circle(area_circle_radius);
+            // mdbMap.create_change_area_circle(area_circle_radius);
+            let d = { detail: { radius: area_circle_radius } };
+            window.dispatchEvent(new CustomEvent('mdbCreateAreaCircle', d));
             // Enable start button when Area button is disactivated //
             if (!Area_button_activated && area_defined) {
                 mdbMasterControl.start_button_enable();
@@ -541,31 +558,16 @@
         };
 
         document.getElementById('start-button').onclick = ev => {
-            // TODO first move should encompass all players
-            // const stop = 100;
-            // let move = { coords: Lyon_coord, radius: 2000 };
-            // let id = window.setInterval(() => {
-            //     move = mdbMasterControl.pickMove(move);
-            //     if (move) {
-            //         let d = { detail: { move: move } };
-            //         window.dispatchEvent(new CustomEvent('mdbMoveEye', d));
-            //     } else {
-            //         window.clearInterval(id);
-            //     }
-            // }, 1000);
-
-
+            
             // Set Timer //
-            loadTimer();
+            //loadTimer();
             // Get coords area_circle //
             let coords_area_circle = mdbMap.get_marker()._area_circle.getLatLng();
-            
-            //nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
-
-
+            let d = { detail: { coords: coords_area_circle, radius: 2000 } };
             // Create next_circle area //
-            mdbMap.next_circle_area(coords_area_circle, 2000);
+            window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
 
+            //nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
         };
 
         document.getElementById('menu-hotspot').onclick = ev => {
