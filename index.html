@@ -679,10 +679,6 @@
             for (i = 0; i < nb_next_circle; i++) {
                 array_next_circle[i] = {coords: coords_area_circle, radius:radius_area_circle}
             }            
-            // console.log(array_next_circle);
-            // let d = { detail: { coords: coords_area_circle, radius: 2000 } };
-            // // Create next_circle area //
-            // window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
 
             // Set Timer //
             var timer_type = "next_zone";
@@ -693,15 +689,17 @@
 
             let id = window.setInterval(() => {
                 
-                // move = mdbMasterControl.pickMove(move);
-                // var move = true;
+                let d = { detail: array_next_circle[counter_nb_next_circle] };
+                // Create/change next_circle area //
+                window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
+
                 if (counter_time_step < nb_time_step -1) {
                     counter_time_step += 1;
                     let d = { detail: { move: counter_time_step } };
                     window.dispatchEvent(new CustomEvent('mdbLoadTimer', d));
                 } 
 
-                else if (counter_time_step >= nb_time_step -1 && counter_nb_next_circle < nb_next_circle) {
+                else if (counter_time_step >= nb_time_step -1 && counter_nb_next_circle < nb_next_circle -1) {
                     counter_time_step = 0; // Re-init
                     counter_nb_next_circle += 1;
 
@@ -716,30 +714,12 @@
                         timer_value = time_to_next_zone;
                         nb_time_step = nb_time_step_func(timer_value, time_interval)
                     }
-                    // let d = { detail: { move: counter_time_step } };
-                    // window.dispatchEvent(new CustomEvent('mdbLoadTimer', d));
                 }
 
                 else {
                     window.clearInterval(id);
                 }
             }, sec_to_ms(time_interval));
-
-            // Set Timer //
-            // timer_value = time_to_next_zone;
-            // nb_time_step = nb_time_step_func(timer_value, time_interval)
-            // var nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
-            
-            // clearInterval(nIntervId);
-            // counter_time_step = 0; // Re-init
-
-
-
-            // timer_value = time_pause;
-            // nb_time_step = nb_time_step_func(timer_value, time_interval)
-            // var nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
-        
-        
         
         };
 
