@@ -154,6 +154,8 @@
         var Lyon_coord = [45.771774, 4.845743];
         var area_circle_radius = 3500; // meters
 
+        var nb_next_circle = 3;
+
         // ---- Buttons ---- //
         var Area_button_activated = false; 
         
@@ -163,10 +165,11 @@
         var timer_id = "myCanvas";
 
         var time_interval = 0.1; // sec
-        var time_decrease = 10; // sec
-        var nb_time_step = Math.floor(time_decrease/time_interval); // sec
+        var time_to_next_zone = 5; // sec
+        var time_pause = 10; // sec
+        var nb_time_step;
         var counter_time_step = 0;
-        var timer_value = time_decrease;
+        var timer_value = time_to_next_zone;
         var str_timer_value;
 
         var width_canvas = 200 // px
@@ -202,12 +205,12 @@
             ctx.fillRect(0,0,width_rect_timer, height_rect_timer);
             ctx.fillStyle="black";
 
-            if (counter_time_step < nb_time_step-1) {
-                timer_value = timer_value -time_interval; // sec
-                console.log('timer_value', timer_value);
-                str_timer_value = timer_value.toString();
-                counter_time_step += 1;
-            }
+        // if (counter_time_step < nb_time_step-1) {
+            timer_value = timer_value -time_interval; // sec
+            //console.log('timer_value', timer_value);
+            str_timer_value = timer_value.toString();
+        //     counter_time_step += 1;
+        // }
             ctx.fillText(str_timer_value.toHHMMSS(),0,80);
         }
 
@@ -252,13 +255,13 @@
         }
 				
 		function getPoint(lat, lng, r, deg) {
-	 	  lat2 = meter_to_lat_lng(r) * Math.cos(deg2rad(deg));
-	 	  lat2 += lat;
-	 	  lng2 = meter_to_lat_lng(r) * Math.sin(deg2rad(deg));
-	 	  lng2 = lng2 * (1 / Math.cos(deg2rad(lat2)));
-	 	  lng2 += lng;
-	 	  return {lat:lat2, lng:lng2};
-	 	}
+            lat2 = meter_to_lat_lng(r) * Math.cos(deg2rad(deg));
+            lat2 += lat;
+            lng2 = meter_to_lat_lng(r) * Math.sin(deg2rad(deg));
+            lng2 = lng2 * (1 / Math.cos(deg2rad(lat2)));
+            lng2 += lng;
+            return {lat:lat2, lng:lng2};
+            }
 
         function getDistance_between_2_coord(origin, destination) {
             // return distance in meters
@@ -273,17 +276,17 @@
             var a = Math.pow(Math.sin(deltaLat/2), 2) + Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(deltaLon/2), 2);
             var c = 2 * Math.asin(Math.sqrt(a));
             return c * EARTH_RADIUS * 1000;
-        }
+            }
 
         function dist_to_lat_or_lon(meter_dist){
             lat_or_lon = meter_dist/(1000*EARTH_RADIUS);
             return rad2deg(lat_or_lon);
-        }
+            }
 
         function meter_to_lat_lng(meter){
             lat_lng = meter/const_meter_lat_lng;
             return lat_lng;
-        }
+            }
 
         function deg2rad(deg) {
             return deg * (Math.PI / 180);
@@ -297,6 +300,13 @@
             return Math.random() * (max - min) + min;
             }
 
+        function sec_to_ms(time_sec) {
+            return time_sec *1e3;
+            }
+
+        function nb_time_step_func(time, time_interval) {
+            return Math.floor(time/time_interval);
+        }
 
         /**********************************************************************
          *
@@ -523,7 +533,9 @@
             // Create the area circle
             'mdbCreateAreaCircle',
             // Next circle area
-            'mdbNextCircle'
+            'mdbNextCircle',
+            // Load timer
+            'mdbLoadTimer'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -595,6 +607,11 @@
             mdbMap.next_circle_area(m.coords, m.radius);
                 });
 
+        window.addEventListener('mdbLoadTimer', ev => {
+            let m = ev.detail;
+            mdbMap.loadTimer();
+                });
+
 
         document.getElementById('enter-button').onclick = ev => {
             let pi = document.getElementById('player-input'),
@@ -649,23 +666,85 @@
 
         document.getElementById('start-button').onclick = ev => {
             
-            // Generate next circle serie //
-            
+            // Inactivate buttons //
+            mdbMasterControl.disable();
+
 
             // Get coords area_circle //
             let coords_area_circle = mdbMap.get_marker()._area_circle.getLatLng();
+            let radius_area_circle = mdbMap.get_marker()._area_circle.getRadius();
+
+            var array_next_circle = []; // Init
+
+            // Generate next circle serie //
+            var i;
+            for (i = 0; i < nb_next_circle; i++) {
+                array_next_circle[i] = {coords: coords_area_circle, radius:radius_area_circle}
+            }            
+            // console.log(array_next_circle);
             let d = { detail: { coords: coords_area_circle, radius: 2000 } };
             // Create next_circle area //
             window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
 
-            // Inactivate buttons //
-            mdbMasterControl.disable();
+
 
             // Set Timer //
-            //loadTimer();
+            var timer_type = "next_zone";
+            timer_value = time_to_next_zone;
+            nb_time_step = nb_time_step_func(timer_value, time_interval)
+            var counter_nb_next_circle = 0;
             
+            let id = window.setInterval(() => {
+                
+                // move = mdbMasterControl.pickMove(move);
+                // var move = true;
+                if (counter_time_step < nb_time_step -1) {
+                    counter_time_step += 1;
+                    let d = { detail: { move: counter_time_step } };
+                    window.dispatchEvent(new CustomEvent('mdbLoadTimer', d));
+                } 
 
-            //nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
+                else if (counter_time_step >= nb_time_step -1 && counter_nb_next_circle < nb_next_circle) {
+                    counter_time_step = 0; // Re-init
+                    counter_nb_next_circle += 1;
+
+                    // Set Timer //
+                    if (timer_type == "next_zone"){
+                        timer_type = "pause"
+                        timer_value = time_pause;
+                        nb_time_step = nb_time_step_func(timer_value, time_interval)
+                    }
+                    else{
+                        timer_type = "next_zone"
+                        timer_value = time_pause;
+                        nb_time_step = nb_time_step_func(timer_value, time_interval)
+                    }
+                    let d = { detail: { move: counter_time_step } };
+                    window.dispatchEvent(new CustomEvent('mdbLoadTimer', d));
+
+                }
+
+                else {
+                    window.clearInterval(id);
+                }
+            }, sec_to_ms(time_interval));
+
+            // Set Timer //
+            // timer_value = time_to_next_zone;
+            // nb_time_step = nb_time_step_func(timer_value, time_interval)
+            // var nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
+            
+            // clearInterval(nIntervId);
+            // counter_time_step = 0; // Re-init
+
+
+
+            // timer_value = time_pause;
+            // nb_time_step = nb_time_step_func(timer_value, time_interval)
+            // var nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
+        
+        
+        
         };
 
         document.getElementById('menu-hotspot').onclick = ev => {
