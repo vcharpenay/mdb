@@ -422,7 +422,6 @@
 
             const _style = {
                 eye: { color: '#909090', fillOpacity: 0.2, dashArray: '10px' },
-                area_circle: { color: '#503264', fillOpacity: 0.2, dashArray: '10px' },
                 next_circle_area: { color: '#503264', fillOpacity: 0.2, dashArray: '10px' },
                 player: { color: '#503264' },
                 error: { color: '#dd2222' }
@@ -753,7 +752,7 @@
         //  - ws://broker.hivemq.com:8000
         //  - ws://mqtt.dioty.co:8080
         //  - ws://mqtt.fluux.io
-        let mqttClient = mqtt.connect('ws://iot.eclipse.org:80/ws');
+        let mqttClient = mqtt.connect('ws://iot.eclipse.org:80/ws'); // TODO wss
         mqttClient.on('connect', function() { console.log('connected'); });
 
         mqttClient.on('message', (topic, msg) => {
