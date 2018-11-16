@@ -167,10 +167,8 @@
         var time_interval = 0.1; // sec
         var time_to_next_zone = 5; // sec
         var time_pause = 10; // sec
-        var nb_time_step;
-        var counter_time_step = 0;
-        var timer_value = time_to_next_zone;
         var str_timer_value;
+        var timer_value;
 
         var width_canvas = 200 // px
         var height_canvas = 100 // px
@@ -682,18 +680,17 @@
                 array_next_circle[i] = {coords: coords_area_circle, radius:radius_area_circle}
             }            
             // console.log(array_next_circle);
-            let d = { detail: { coords: coords_area_circle, radius: 2000 } };
-            // Create next_circle area //
-            window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
-
-
+            // let d = { detail: { coords: coords_area_circle, radius: 2000 } };
+            // // Create next_circle area //
+            // window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
 
             // Set Timer //
             var timer_type = "next_zone";
-            timer_value = time_to_next_zone;
-            nb_time_step = nb_time_step_func(timer_value, time_interval)
+            var counter_time_step = 0;
             var counter_nb_next_circle = 0;
-            
+            timer_value = time_to_next_zone;
+            var nb_time_step = nb_time_step_func(timer_value, time_interval);
+
             let id = window.setInterval(() => {
                 
                 // move = mdbMasterControl.pickMove(move);
@@ -714,14 +711,13 @@
                         timer_value = time_pause;
                         nb_time_step = nb_time_step_func(timer_value, time_interval)
                     }
-                    else{
+                    else if (timer_type == "pause"){
                         timer_type = "next_zone"
-                        timer_value = time_pause;
+                        timer_value = time_to_next_zone;
                         nb_time_step = nb_time_step_func(timer_value, time_interval)
                     }
-                    let d = { detail: { move: counter_time_step } };
-                    window.dispatchEvent(new CustomEvent('mdbLoadTimer', d));
-
+                    // let d = { detail: { move: counter_time_step } };
+                    // window.dispatchEvent(new CustomEvent('mdbLoadTimer', d));
                 }
 
                 else {
