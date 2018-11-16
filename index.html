@@ -539,7 +539,9 @@
             // Next circle area
             'mdbNextCircle',
             // Load timer
-            'mdbLoadTimer'
+            'mdbLoadTimer',
+            // Position player in the area
+            'mdbOut'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -588,7 +590,7 @@
 
             if (p == mdbPlayers.me()) {
                 mdbMap.center(coords);
-            }
+            }          
         });
 
         window.addEventListener('mdbMoveError', ev => {
@@ -615,6 +617,60 @@
             let m = ev.detail;
             mdbMap.loadTimer();
                 });
+
+        window.addEventListener('mdbOut', ev => {
+            let p = ev.detail.player;
+            let coords = ev.detail.coords;
+
+            // Test distance to next circle or circle area //
+            let markers_on_map = mdbMap.get_marker();
+            console.log('lol', markers_on_map)
+            if (markers_on_map._next_circle_area){
+                let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._next_circle_area.getLatLng().lat, markers_on_map._next_circle_area.getLatLng().lng]);
+                console.log('prout', dist_temp, markers_on_map._next_circle_area.getRadius());
+                if (dist_temp > markers_on_map._next_circle_area.getRadius()) {
+                    console.log('pipi', dist_temp);
+                }
+            }
+            else if (markers_on_map._area_circle){
+                let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._area_circle.getLatLng().lat, markers_on_map._area_circle.getLatLng().lng]);
+                console.log('prout', dist_temp, markers_on_map._area_circle.getRadius());
+                if (dist_temp > markers_on_map._area_circle.getRadius()) {
+                    console.log('caca', dist_temp);
+                }
+            }
+
+        //     if ( != mdbPlayers.me()) {
+        //         if (mdbMasterControl.isMaster()) {
+        //             let otherEv = new CustomEvent('mdbRecallPresent', {
+        //                 detail: { present: mdbPlayers.list() }
+        //             });
+        //             window.dispatchEvent(otherEv);
+        //         }
+                
+        //         mdbPlayers.add(ev.detail.player, false);
+        //     } 
+        //     // If it is the first player in the room: the master //
+        //     else {
+        //         mdbMasterControl.ButtonsStatusMaster() // Adjust buttons status
+        //         let id = navigator.geolocation.watchPosition(pos => {
+        //             let p = mdbPlayers.me();
+        //             let coords = [pos.coords.latitude, pos.coords.longitude];
+
+        //             let d = { detail: { player: p, coords: coords } };
+        //             window.dispatchEvent(new CustomEvent('mdbMove', d));
+        //         }, (err) => {
+        //             let p = mdbPlayers.me();
+        //             let d = { detail: { player: p }};
+        //             window.dispatchEvent(new CustomEvent('mdbMoveError', d));
+                    
+        //             console.error(err.message);
+        //         });
+        //     }
+        });
+
+
+
 
 
         document.getElementById('enter-button').onclick = ev => {
@@ -673,7 +729,6 @@
             // Inactivate buttons //
             mdbMasterControl.disable();
 
-
             // Get coords area_circle //
             let coords_area_circle = mdbMap.get_marker()._area_circle.getLatLng();
             let radius_area_circle = mdbMap.get_marker()._area_circle.getRadius();
@@ -721,6 +776,23 @@
                         timer_type = "pause"
                         timer_value = time_pause;
                         nb_time_step = nb_time_step_func(timer_value, time_interval)
+                        
+                        // Check position of each player //
+                        let d = { detail: { coords: Lyon_coord } };
+                        window.dispatchEvent(new CustomEvent('mdbOut', d));
+                        // let id = navigator.geolocation.watchPosition(pos => {
+                        //     let p = mdbPlayers.me();
+                        //     let coords = [pos.coords.latitude, pos.coords.longitude];
+                        
+                        //     let d = { detail: { player: p, coords: coords } };
+                        //     window.dispatchEvent(new CustomEvent('mdbOut', d));
+                        // }, (err) => {
+                        //     let p = mdbPlayers.me();
+                        //     let d = { detail: { player: p }};
+                        //     window.dispatchEvent(new CustomEvent('mdbMoveError', d));
+                            
+                        //     console.error(err.message);
+                        // });
                     }
 
                     else if (timer_type == "pause"){
@@ -739,7 +811,7 @@
                     window.clearInterval(id);
                 }
             }, sec_to_ms(time_interval));
-        
+
         };
 
         document.getElementById('menu-hotspot').onclick = ev => {
