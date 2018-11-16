@@ -423,35 +423,28 @@
             // Lyon, tavu
             _m.setView(Lyon_coord, 14);
 
+            // ---- Return the map ---- //
+            this.get_map = () => {return _m;} 
+
             // ---- Return markers on the map ---- //
             this.get_marker = () => {return _markers;} 
 
             // ---- Create/change circular zone on click ---- //
-            this.create_change_area_circle = (radius) => {
+            this.create_change_area_circle = (coords, radius) => {
                 
-                if (Area_button_activated){
-                    // Listen to click on the map //
-                    _m.on('click', (eventObject) => {
-                        let position = eventObject.latlng;
-                        let e = _markers._area_circle;
-                        // If circle is undefined //
-                        if (!e) {
-                            let opts = Object.create(_style.area_circle);
-                            opts.radius = radius;
-                            e = L.circle(position, opts).addTo(_m);
-                            _markers._area_circle = e;
-                            area_defined = true; // area is defined
-                        }
-                        // Actualize position and radius //
-                        e.setLatLng(position);
-                        e.setRadius(radius);
-                        })
+                let position = coords;
+                let e = _markers._area_circle;
+                // If circle is undefined //
+                if (!e) {
+                    let opts = Object.create(_style.area_circle);
+                    opts.radius = radius;
+                    e = L.circle(position, opts).addTo(_m);
+                    _markers._area_circle = e;
+                    area_defined = true; // area is defined
                 }
-
-                else{
-                    // Stop listening to click //
-                    _m.off('click');
-                }
+                // Actualize position and radius //
+                e.setLatLng(position);
+                e.setRadius(radius);
             };
 
             this.next_circle_area = (coords, radius) => {
@@ -593,8 +586,8 @@
         });
 
         window.addEventListener('mdbCreateAreaCircle', ev => {
-            let radius = ev.detail.radius;
-            mdbMap.create_change_area_circle(radius);
+            let m = ev.detail;
+            mdbMap.create_change_area_circle(m.coords, m.radius);
                 });
 
         window.addEventListener('mdbNextCircle', ev => {
@@ -634,9 +627,19 @@
                 Area_button_activated = true;
             }
             // Create or change Area circle //
-            // mdbMap.create_change_area_circle(area_circle_radius);
-            let d = { detail: { radius: area_circle_radius } };
-            window.dispatchEvent(new CustomEvent('mdbCreateAreaCircle', d));
+            if(Area_button_activated){
+                // Listen to click on the map //
+                mdbMap.get_map().on('click', (eventObject) => {
+                    let coords = eventObject.latlng;
+                    let d = { detail: {coords: coords, radius: area_circle_radius } };
+                    window.dispatchEvent(new CustomEvent('mdbCreateAreaCircle', d));
+                    });
+                }
+            else{
+                // Stop listening to click //
+                mdbMap.get_map().off('click');
+            }
+
             // Enable start button when Area button is disactivated //
             if (!Area_button_activated && area_defined) {
                 mdbMasterControl.start_button_enable();
