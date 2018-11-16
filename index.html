@@ -64,11 +64,15 @@
         }
 
         .sidebar .content {
-            padding: 0 10px;
             border-right: 5px solid rgba(20, 20, 50, 0.2);
             height: 100%;
             width: 200px;
             background: white;
+        }
+
+        .sidebar .content > * {
+            padding-left: 10px;
+            padding-right: 10px;
         }
 
         .sidebar .hotspot {
@@ -85,11 +89,13 @@
         .sidebar .bottom {
             position: absolute;
             bottom: 0px;
-            padding-bottom: 10px;
+            width: 175px;
+            background: white;
         }
 
         .sidebar .bottom * {
-            width: 180px;
+            width: 175px;
+            margin-bottom: 10px;
         }
 
         li.highlight {
@@ -125,12 +131,14 @@
         <div class="content">
             <p>Room: <span id="room-name"></span></p>
             <p>Players:</p>
-            <ul id="player-list">
-                <li id="player-me" class="highlight"></li>
-            </ul>
-            <button id="area-button">Area</button>
+            <div>
+                <ul id="player-list">
+                    <li id="player-me" class="highlight"></li>
+                </ul>
+            </div>
 
             <div class="bottom">
+                <button id="area-button">Select area</button>
                 <button id="start-button">Start</button>
             </div>
         </div>
