@@ -162,7 +162,13 @@
         var Lyon_coord = [45.771774, 4.845743];
         var area_circle_radius = 3500; // meters
 
+
+        // ---- Next circle ---- //
         var nb_next_circle = 3;
+        var distance_between_next_circles = 100; // meter
+        var next_circle_prop_smaller = 0.7;
+		var const_meter_lat_lng = 111230;
+        var EARTH_RADIUS = 6371;
 
         // ---- Timer ---- //
         var timer_id = "myCanvas";
@@ -170,10 +176,8 @@
         var time_interval = 0.1; // sec
         var time_to_next_zone = 5; // sec
         var time_pause = 10; // sec
-        var nb_time_step;
-        var counter_time_step = 0;
-        var timer_value = time_to_next_zone;
         var str_timer_value;
+        var timer_value;
 
         var width_canvas = 200 // px
         var height_canvas = 100 // px
@@ -217,14 +221,14 @@
             ctx.fillText(str_timer_value.toHHMMSS(),0,80);
         }
 
-        function find_next_circle() {
-			var new_radius_next_circle = next_circle_area.getRadius() *next_circle_prop_smaller; 
-            var b = circle_area.getRadius() -new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
+        function find_next_circle(coords_area_circle, radius_area_circle, coords_previous_circle, radius_previous_circle) {
+			var new_radius_next_circle = radius_previous_circle *next_circle_prop_smaller; 
+            var b = radius_area_circle -new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
             //var new_radius_next_circle = 50; 
             //var b = 150 -new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
             
             // Distance between next_circle and the following //
-            distance_between_next_circles += distance_between_next_circles*next_circle_prop_smaller; 
+            distance_between_next_circles += distance_between_next_circles *next_circle_prop_smaller; 
             //distance_between_next_circles = 40; 
 
             // Check that distance_between_next_circles is still in the circle area // 
@@ -243,10 +247,10 @@
             // Loop to find solution at the intersection of the circle and the area //
             while (next_center_outside_area && counter_loop < max_counter_loop){
                 var deg = getRandomArbitrary(0,360);
-                coord_temp = getPoint(next_circle_area.getLatLng().lat, next_circle_area.getLatLng().lng, c, deg);
+                coord_temp = getPoint(coords_previous_circle.lat, coords_previous_circle.lng, c, deg);
                 //console.log('coord_temp',coord_temp);
                 
-                var dist = getDistance_between_2_coord([circle_area_smaller.getLatLng().lat, circle_area_smaller.getLatLng().lng], [coord_temp.lat, coord_temp.lng])
+                var dist = getDistance_between_2_coord([coords_area_circle.lat, coords_area_circle.lng], [coord_temp.lat, coord_temp.lng])
                 //console.log('dist', counter_loop)
                 if (dist < b){
                     next_center_outside_area = false;
@@ -258,9 +262,9 @@
         }
 				
 		function getPoint(lat, lng, r, deg) {
-            lat2 = meter_to_lat_lng(r) * Math.cos(deg2rad(deg));
+            let lat2 = meter_to_lat_lng(r) * Math.cos(deg2rad(deg));
             lat2 += lat;
-            lng2 = meter_to_lat_lng(r) * Math.sin(deg2rad(deg));
+            let lng2 = meter_to_lat_lng(r) * Math.sin(deg2rad(deg));
             lng2 = lng2 * (1 / Math.cos(deg2rad(lat2)));
             lng2 += lng;
             return {lat:lat2, lng:lng2};
@@ -281,14 +285,13 @@
             return c * EARTH_RADIUS * 1000;
             }
 
-        function dist_to_lat_or_lon(meter_dist){
-            lat_or_lon = meter_dist/(1000*EARTH_RADIUS);
-            return rad2deg(lat_or_lon);
-            }
+        // function dist_to_lat_or_lon(meter_dist){
+        //     lat_or_lon = meter_dist/(1000*EARTH_RADIUS);
+        //     return rad2deg(lat_or_lon);
+        //     }
 
         function meter_to_lat_lng(meter){
-            lat_lng = meter/const_meter_lat_lng;
-            return lat_lng;
+            return meter/const_meter_lat_lng;
             }
 
         function deg2rad(deg) {
@@ -540,7 +543,9 @@
             // Next circle area
             'mdbNextCircle',
             // Load timer
-            'mdbLoadTimer'
+            'mdbLoadTimer',
+            // Position player in the area
+            'mdbOut'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -588,7 +593,7 @@
 
             if (p == mdbPlayers.me()) {
                 mdbMap.center(coords);
-            }
+            }          
         });
 
         window.addEventListener('mdbMoveError', ev => {
@@ -610,6 +615,60 @@
             let m = ev.detail;
             mdbMap.loadTimer();
                 });
+
+        window.addEventListener('mdbOut', ev => {
+            let p = ev.detail.player;
+            let coords = ev.detail.coords;
+
+            // Test distance to next circle or circle area //
+            let markers_on_map = mdbMap.get_marker();
+            console.log('lol', markers_on_map)
+            if (markers_on_map._next_circle_area){
+                let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._next_circle_area.getLatLng().lat, markers_on_map._next_circle_area.getLatLng().lng]);
+                console.log('prout', dist_temp, markers_on_map._next_circle_area.getRadius());
+                if (dist_temp > markers_on_map._next_circle_area.getRadius()) {
+                    console.log('pipi', dist_temp);
+                }
+            }
+            else if (markers_on_map._area_circle){
+                let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._area_circle.getLatLng().lat, markers_on_map._area_circle.getLatLng().lng]);
+                console.log('prout', dist_temp, markers_on_map._area_circle.getRadius());
+                if (dist_temp > markers_on_map._area_circle.getRadius()) {
+                    console.log('caca', dist_temp);
+                }
+            }
+
+        //     if ( != mdbPlayers.me()) {
+        //         if (mdbMasterControl.isMaster()) {
+        //             let otherEv = new CustomEvent('mdbRecallPresent', {
+        //                 detail: { present: mdbPlayers.list() }
+        //             });
+        //             window.dispatchEvent(otherEv);
+        //         }
+                
+        //         mdbPlayers.add(ev.detail.player, false);
+        //     } 
+        //     // If it is the first player in the room: the master //
+        //     else {
+        //         mdbMasterControl.ButtonsStatusMaster() // Adjust buttons status
+        //         let id = navigator.geolocation.watchPosition(pos => {
+        //             let p = mdbPlayers.me();
+        //             let coords = [pos.coords.latitude, pos.coords.longitude];
+
+        //             let d = { detail: { player: p, coords: coords } };
+        //             window.dispatchEvent(new CustomEvent('mdbMove', d));
+        //         }, (err) => {
+        //             let p = mdbPlayers.me();
+        //             let d = { detail: { player: p }};
+        //             window.dispatchEvent(new CustomEvent('mdbMoveError', d));
+                    
+        //             console.error(err.message);
+        //         });
+        //     }
+        });
+
+
+
 
 
         document.getElementById('enter-button').onclick = ev => {
@@ -644,55 +703,79 @@
             let e = mdbMap.getEye();
             let coords_area_circle = e.coords;
             let radius_area_circle = e.radius;
+            let coords_previous_circle = coords_area_circle;
+            let radius_previous_circle = radius_area_circle;
 
             var array_next_circle = []; // Init
 
             // Generate next circle serie //
             var i;
             for (i = 0; i < nb_next_circle; i++) {
-                array_next_circle[i] = {coords: coords_area_circle, radius:radius_area_circle}
+
+                let new_next_circle = find_next_circle(coords_area_circle, radius_area_circle, coords_previous_circle, radius_previous_circle);
+                array_next_circle[i] = {coords: new_next_circle.coords, radius: new_next_circle.radius}
+                
+                coords_previous_circle = new_next_circle.coords;
+                radius_previous_circle = new_next_circle.radius;
             }            
-            // console.log(array_next_circle);
-            let d = { detail: { coords: coords_area_circle, radius: 2000 } };
-            // Create next_circle area //
-            window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
-
-
 
             // Set Timer //
             var timer_type = "next_zone";
-            timer_value = time_to_next_zone;
-            nb_time_step = nb_time_step_func(timer_value, time_interval)
+            var counter_time_step = 0;
             var counter_nb_next_circle = 0;
-            
+            timer_value = time_to_next_zone;
+            var nb_time_step = nb_time_step_func(timer_value, time_interval);
+
+            // Create next_circle area //
+            let d_circle = { detail: array_next_circle[counter_nb_next_circle] };
+            window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
+
             let id = window.setInterval(() => {
                 
-                // move = mdbMasterControl.pickMove(move);
-                // var move = true;
                 if (counter_time_step < nb_time_step -1) {
+                    // Timer //
                     counter_time_step += 1;
-                    let d = { detail: { move: counter_time_step } };
-                    window.dispatchEvent(new CustomEvent('mdbLoadTimer', d));
+                    let d_timer = { detail: { param: counter_time_step } };
+                    window.dispatchEvent(new CustomEvent('mdbLoadTimer', d_timer));
                 } 
 
-                else if (counter_time_step >= nb_time_step -1 && counter_nb_next_circle < nb_next_circle) {
+                else if (counter_time_step >= nb_time_step -1 && counter_nb_next_circle < nb_next_circle -1) {
                     counter_time_step = 0; // Re-init
-                    counter_nb_next_circle += 1;
 
                     // Set Timer //
-                    if (timer_type == "next_zone"){
+                    if (timer_type == "next_zone"){                        
                         timer_type = "pause"
                         timer_value = time_pause;
                         nb_time_step = nb_time_step_func(timer_value, time_interval)
+                        
+                        // Check position of each player //
+                        let d = { detail: { coords: Lyon_coord } };
+                        window.dispatchEvent(new CustomEvent('mdbOut', d));
+                        // let id = navigator.geolocation.watchPosition(pos => {
+                        //     let p = mdbPlayers.me();
+                        //     let coords = [pos.coords.latitude, pos.coords.longitude];
+                        
+                        //     let d = { detail: { player: p, coords: coords } };
+                        //     window.dispatchEvent(new CustomEvent('mdbOut', d));
+                        // }, (err) => {
+                        //     let p = mdbPlayers.me();
+                        //     let d = { detail: { player: p }};
+                        //     window.dispatchEvent(new CustomEvent('mdbMoveError', d));
+                            
+                        //     console.error(err.message);
+                        // });
                     }
-                    else{
+
+                    else if (timer_type == "pause"){
+                        counter_nb_next_circle += 1;
+                        // Change next_circle area //
+                        let d_circle = { detail: array_next_circle[counter_nb_next_circle] };
+                        window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
+
                         timer_type = "next_zone"
-                        timer_value = time_pause;
+                        timer_value = time_to_next_zone;
                         nb_time_step = nb_time_step_func(timer_value, time_interval)
                     }
-                    let d = { detail: { move: counter_time_step } };
-                    window.dispatchEvent(new CustomEvent('mdbLoadTimer', d));
-
                 }
 
                 else {
@@ -700,22 +783,6 @@
                 }
             }, sec_to_ms(time_interval));
 
-            // Set Timer //
-            // timer_value = time_to_next_zone;
-            // nb_time_step = nb_time_step_func(timer_value, time_interval)
-            // var nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
-            
-            // clearInterval(nIntervId);
-            // counter_time_step = 0; // Re-init
-
-
-
-            // timer_value = time_pause;
-            // nb_time_step = nb_time_step_func(timer_value, time_interval)
-            // var nIntervID_timer = setInterval(loadTimer, sec_to_ms(time_interval));
-        
-        
-        
         };
 
         document.getElementById('menu-hotspot').onclick = ev => {
