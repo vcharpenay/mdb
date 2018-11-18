@@ -163,7 +163,7 @@
         var area_circle_radius = 3500; // meters
 
 
-        
+        // ---- Next circle ---- //
         var nb_next_circle = 3;
         var distance_between_next_circles = 100; // meter
         var next_circle_prop_smaller = 0.7;
@@ -177,8 +177,11 @@
         var time_to_next_zone = 5; // sec
         var time_pause = 10; // sec
         var str_timer_value;
-        var timer_value;
+        
+        var counter_nb_next_circle = 0;
 
+
+        
         var width_canvas = 200 // px
         var height_canvas = 100 // px
         var width_rect_timer = 150 // px
@@ -202,24 +205,24 @@
             return hours+':'+minutes+':'+seconds;
         }
 
-        function loadTimer() {
-            var c = document.getElementById(timer_id);
-            var ctx = c.getContext("2d");
+        // function loadTimer() {
+        //     var c = document.getElementById(timer_id);
+        //     var ctx = c.getContext("2d");
             
-            // Parameters //
-            ctx.font = "20px Arial";
-            ctx.fillStyle="white";
-            ctx.fillRect(0,0,width_rect_timer, height_rect_timer);
-            ctx.fillStyle="black";
+        //     // Parameters //
+        //     ctx.font = "20px Arial";
+        //     ctx.fillStyle="white";
+        //     ctx.fillRect(0,0,width_rect_timer, height_rect_timer);
+        //     ctx.fillStyle="black";
 
-        // if (counter_time_step < nb_time_step-1) {
-            timer_value = timer_value -time_interval; // sec
-            //console.log('timer_value', timer_value);
-            str_timer_value = timer_value.toString();
-        //     counter_time_step += 1;
+        // // if (counter_time_step < nb_time_step-1) {
+        //     timer_value = timer_value -time_interval; // sec
+        //     //console.log('timer_value', timer_value);
+        //     str_timer_value = timer_value.toString();
+        // //     counter_time_step += 1;
+        // // }
+        //     ctx.fillText(str_timer_value.toHHMMSS(),0,80);
         // }
-            ctx.fillText(str_timer_value.toHHMMSS(),0,80);
-        }
 
         function find_next_circle(coords_area_circle, radius_area_circle, coords_previous_circle, radius_previous_circle) {
 			var new_radius_next_circle = radius_previous_circle *next_circle_prop_smaller; 
@@ -523,6 +526,48 @@
             return this;
         })();
 
+        const mdbTimer = (() => {
+
+            this.decrease_timer = () => {
+                var c = document.getElementById(timer_id);
+                var ctx = c.getContext("2d");
+                
+                var counter_time_step = 0;
+                var nb_time_step;
+                var timer_type = "game";
+                var timer_value = time_to_next_zone;
+
+                let id = window.setInterval(() => {
+                
+                    if (timer_value > 2*time_interval) { // 2*time_interval to prevent bad approximation near zero
+                        // Timer //
+                        timer_value = timer_value -time_interval; // sec
+                        str_timer_value = timer_value.toString();
+
+                        // Parameters //
+                        ctx.font = "20px Arial";
+                        ctx.fillStyle="white";
+                        ctx.fillRect(0,0,width_rect_timer, height_rect_timer);
+                        ctx.fillStyle="black";
+                        ctx.fillText(str_timer_value.toHHMMSS(),0,80);        
+                    } 
+                    
+                    else if (timer_value <= 2*time_interval && timer_type == "game") {
+                        timer_value = time_pause;
+                        timer_type = "pause";
+                    }
+
+                    else {
+                        window.clearInterval(id);
+                    }
+                }, sec_to_ms(time_interval));
+
+            };
+
+            return this;
+        })();
+
+
         /**********************************************************************
          *
          * UI and application events
@@ -543,7 +588,7 @@
             // Next circle area
             'mdbNextCircle',
             // Load timer
-            'mdbLoadTimer',
+            // 'mdbLoadTimer',
             // Position player in the area
             'mdbOut'
         ];
@@ -608,35 +653,43 @@
 
         window.addEventListener('mdbNextCircle', ev => {
             let m = ev.detail;
-            mdbMap.next_circle_area(m.coords, m.radius);
-                });
+            mdbMap.next_circle_area(m.params.coords, m.params.radius);
+            mdbTimer.decrease_timer();
 
-        window.addEventListener('mdbLoadTimer', ev => {
-            let m = ev.detail;
-            mdbMap.loadTimer();
-                });
+
+            
+            // if ( < ) {
+                
+            //     console.log('caca', timer_value);
+            // }
+        });
+
+        // window.addEventListener('mdbLoadTimer', ev => {
+        //     let m = ev.detail;
+        //     mdbMap.loadTimer();
+        //         });
 
         window.addEventListener('mdbOut', ev => {
             let p = ev.detail.player;
             let coords = ev.detail.coords;
 
-            // Test distance to next circle or circle area //
-            let markers_on_map = mdbMap.get_marker();
-            console.log('lol', markers_on_map)
-            if (markers_on_map._next_circle_area){
-                let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._next_circle_area.getLatLng().lat, markers_on_map._next_circle_area.getLatLng().lng]);
-                console.log('prout', dist_temp, markers_on_map._next_circle_area.getRadius());
-                if (dist_temp > markers_on_map._next_circle_area.getRadius()) {
-                    console.log('pipi', dist_temp);
-                }
-            }
-            else if (markers_on_map._area_circle){
-                let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._area_circle.getLatLng().lat, markers_on_map._area_circle.getLatLng().lng]);
-                console.log('prout', dist_temp, markers_on_map._area_circle.getRadius());
-                if (dist_temp > markers_on_map._area_circle.getRadius()) {
-                    console.log('caca', dist_temp);
-                }
-            }
+            // // Test distance to next circle or circle area //
+            // let markers_on_map;
+            // console.log('lol', markers_on_map)
+            // if (markers_on_map._next_circle_area){
+            //     let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._next_circle_area.getLatLng().lat, markers_on_map._next_circle_area.getLatLng().lng]);
+            //     console.log('prout', dist_temp, markers_on_map._next_circle_area.getRadius());
+            //     if (dist_temp > markers_on_map._next_circle_area.getRadius()) {
+            //         console.log('pipi', dist_temp);
+            //     }
+            // }
+            // else if (markers_on_map._area_circle){
+            //     let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._area_circle.getLatLng().lat, markers_on_map._area_circle.getLatLng().lng]);
+            //     console.log('prout', dist_temp, markers_on_map._area_circle.getRadius());
+            //     if (dist_temp > markers_on_map._area_circle.getRadius()) {
+            //         console.log('caca', dist_temp);
+            //     }
+            // }
 
         //     if ( != mdbPlayers.me()) {
         //         if (mdbMasterControl.isMaster()) {
@@ -720,68 +773,70 @@
             }            
 
             // Set Timer //
-            var timer_type = "next_zone";
-            var counter_time_step = 0;
-            var counter_nb_next_circle = 0;
-            timer_value = time_to_next_zone;
-            var nb_time_step = nb_time_step_func(timer_value, time_interval);
+            // var timer_type = "next_zone";
+            // var counter_time_step = 0;
+            // var counter_nb_next_circle = 0;
+            // timer_value = mdbTimer.time_to_next_zone;
+            // var nb_time_step = nb_time_step_func(timer_value, time_interval);
 
             // Create next_circle area //
-            let d_circle = { detail: array_next_circle[counter_nb_next_circle] };
+            let d_circle = { detail: {params : array_next_circle[counter_nb_next_circle]}};
             window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
 
-            let id = window.setInterval(() => {
+            // let id = window.setInterval(() => {
                 
-                if (counter_time_step < nb_time_step -1) {
-                    // Timer //
-                    counter_time_step += 1;
-                    let d_timer = { detail: { param: counter_time_step } };
-                    window.dispatchEvent(new CustomEvent('mdbLoadTimer', d_timer));
-                } 
+            //     if (counter_time_step < nb_time_step -1) {
+            //         // Timer //
+            //         counter_time_step += 1;
+            //         // let d_timer = { detail: { param: counter_time_step } };
+            //         // window.dispatchEvent(new CustomEvent('mdbLoadTimer', d_timer));
+            //     } 
 
-                else if (counter_time_step >= nb_time_step -1 && counter_nb_next_circle < nb_next_circle -1) {
-                    counter_time_step = 0; // Re-init
+            //     else if (counter_time_step >= nb_time_step -1 && counter_nb_next_circle < nb_next_circle -1) {
+            //         counter_time_step = 0; // Re-init
 
-                    // Set Timer //
-                    if (timer_type == "next_zone"){                        
-                        timer_type = "pause"
-                        timer_value = time_pause;
-                        nb_time_step = nb_time_step_func(timer_value, time_interval)
+            //         // Set Timer //
+            //         if (timer_type == "next_zone"){                        
+            //             timer_type = "pause"
+            //             timer_value = time_pause;
+            //             nb_time_step = nb_time_step_func(timer_value, time_interval)
                         
-                        // Check position of each player //
-                        let d = { detail: { coords: Lyon_coord } };
-                        window.dispatchEvent(new CustomEvent('mdbOut', d));
-                        // let id = navigator.geolocation.watchPosition(pos => {
-                        //     let p = mdbPlayers.me();
-                        //     let coords = [pos.coords.latitude, pos.coords.longitude];
+            //             // Check position of each player //
+            //             let d = { detail: { coords: Lyon_coord } };
+            //             window.dispatchEvent(new CustomEvent('mdbOut', d));
+            //             // let id = navigator.geolocation.watchPosition(pos => {
+            //             //     let p = mdbPlayers.me();
+            //             //     let coords = [pos.coords.latitude, pos.coords.longitude];
                         
-                        //     let d = { detail: { player: p, coords: coords } };
-                        //     window.dispatchEvent(new CustomEvent('mdbOut', d));
-                        // }, (err) => {
-                        //     let p = mdbPlayers.me();
-                        //     let d = { detail: { player: p }};
-                        //     window.dispatchEvent(new CustomEvent('mdbMoveError', d));
+            //             //     let d = { detail: { player: p, coords: coords } };
+            //             //     window.dispatchEvent(new CustomEvent('mdbOut', d));
+            //             // }, (err) => {
+            //             //     let p = mdbPlayers.me();
+            //             //     let d = { detail: { player: p }};
+            //             //     window.dispatchEvent(new CustomEvent('mdbMoveError', d));
                             
-                        //     console.error(err.message);
-                        // });
-                    }
+            //             //     console.error(err.message);
+            //             // });
+            //         }
 
-                    else if (timer_type == "pause"){
-                        counter_nb_next_circle += 1;
-                        // Change next_circle area //
-                        let d_circle = { detail: array_next_circle[counter_nb_next_circle] };
-                        window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
+            //         else if (timer_type == "pause"){
+            //             counter_nb_next_circle += 1;
 
-                        timer_type = "next_zone"
-                        timer_value = time_to_next_zone;
-                        nb_time_step = nb_time_step_func(timer_value, time_interval)
-                    }
-                }
+            //             timer_type = "next_zone"
+            //             timer_value = time_to_next_zone;
+            //             nb_time_step = nb_time_step_func(timer_value, time_interval)
 
-                else {
-                    window.clearInterval(id);
-                }
-            }, sec_to_ms(time_interval));
+            //             // Change next_circle area //
+            //             let d_circle = { detail: {params : array_next_circle[counter_nb_next_circle], counter_time_step: counter_time_step, nb_time_step: nb_time_step }};
+            //             window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
+
+            //         }
+            //     }
+
+            //     else {
+            //         window.clearInterval(id);
+            //     }
+            // }, sec_to_ms(time_interval));
 
         };
 
