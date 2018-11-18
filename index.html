@@ -499,8 +499,7 @@
                 
                 let outside = true;
                 
-                let m = _markers[player];
-                coords_player = m.getLatLng();
+                var coords_player = _markers[player]._latlng;
                 console.log(coords_player);
                 
                 return outside;
@@ -550,7 +549,8 @@
                     
                     else if (timer_value <= 2*time_interval && timer_type == "game") {
 
-                        let outside = mdbMap.test_player_position_in_next_circle();
+                        let p = mdbPlayers.me();
+                        let outside = mdbMap.test_player_position_in_next_circle(p);
                         if (outside){
                             mdbPlayers.addRank();
                             console.log(mdbPlayers.getRank());
