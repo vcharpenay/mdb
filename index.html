@@ -174,8 +174,8 @@
         var timer_id = "myCanvas";
 
         var time_interval = 0.1; // sec
-        var time_to_next_zone = 5; // sec
-        var time_pause = 10; // sec
+        var time_to_next_zone = 3; // sec
+        var time_pause = 5 // sec
         var str_timer_value;
         
         var counter_nb_next_circle = 0; // Init
@@ -315,7 +315,7 @@
         const mdbPlayers = (() => {
             const _ul = document.getElementById('player-list');
             const _li = document.getElementById('player-me');
-            var rank;
+            let _list_rank = {};
 
             this.list = () => {
                 let l = [];
@@ -333,9 +333,23 @@
 
             this.addRank = () => {
                 last_rank -= 1;
-                rank = last_rank};
+                _list_rank[_li.innerText] = last_rank;
+                // console.log(_list_rank);
+            };
 
-            this.getRank = () => {return rank};
+            this.getRank = (player) => {return _list_rank[player]; };
+            this.getAllRank = () => {
+                for(var key in list()) {
+                    if (_list_rank[list()[key]] == undefined){
+                        _list_rank[list()[key]] = 1;
+                    }
+                    else{ // start at 2nd position
+                        _list_rank[list()[key]] = _list_rank[list()[key]] -last_rank +2;
+                    }
+                }
+                return _list_rank;
+                };
+            
             
             return this;
         })();
@@ -412,6 +426,7 @@
                 eye: { color: '#909090', fillOpacity: 0.2, dashArray: '10px' },
                 next_circle_area: { color: '#503264', fillOpacity: 0.2, dashArray: '10px' },
                 player: { color: '#503264' },
+                player_out: { color: '#dd2222' },
                 error: { color: '#dd2222' }
                 // TODO out-of-the-game
             };
@@ -497,11 +512,18 @@
 
             this.test_player_position_in_next_circle = (player) => {
                 
-                let outside = true;
+                let outside = false;
                 
                 var coords_player = _markers[player]._latlng;
-                console.log(coords_player);
-                
+                var dist_temp = getDistance_between_2_coord([_markers._next_circle_area.getLatLng().lat,
+                                                             _markers._next_circle_area.getLatLng().lng],
+                                                             [coords_player.lat,
+                                                              coords_player.lng]);
+                // Test if out of next circle //
+                if (dist_temp > _markers._next_circle_area.getRadius()) {
+                    outside = true;
+                    _markers[player].setStyle(_style.player_out);
+                } 
                 return outside;
             }
 
@@ -552,10 +574,10 @@
                         let p = mdbPlayers.me();
                         let outside = mdbMap.test_player_position_in_next_circle(p);
                         if (outside){
-                            mdbPlayers.addRank();
-                            console.log(mdbPlayers.getRank());
+                            if (!mdbPlayers.getRank(p)){ // Test if rank already exist
+                                mdbPlayers.addRank();
+                            }
                         }
-
 
                         timer_value = time_pause;
                         timer_type = "pause";
@@ -571,7 +593,26 @@
                     }
 
                     else {
+                        // End of the timer and the game //
+
+                        // Print rank //
+                        if (mdbPlayers.list().length == 1){ // If you play alone
+                            if (mdbPlayers.getRank(mdbPlayers.list()) == undefined){
+                                console.log('You did it!');
+                            }
+                            else{
+                                console.log('Take a deep breath and try again when you feel it!');
+                            }                            
+                        }
+                        else{
+                            for (var player in mdbPlayers.list()) {
+                                console.log(mdbPlayers.getRank(mdbPlayers.list()[player]));
+                            }
+                            console.log(mdbPlayers.getAllRank()); //
+                        }
+
                         window.clearInterval(id);
+                            
                     }
 
                 }, sec_to_ms(time_interval));
@@ -599,9 +640,9 @@
             // the game engine moves the eye of the cyclone
             'mdbMoveEye',
             // Next circle area
-            'mdbNextCircle',
-            // Position player in the area
-            'mdbOut'
+            'mdbNextCircle'
+            // // Position player in the area
+            // 'mdbOut'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -668,9 +709,9 @@
         });
 
 
-        window.addEventListener('mdbOut', ev => {
-            let p = ev.detail.player;
-            let coords = ev.detail.coords;
+        // window.addEventListener('mdbOut', ev => {
+        //     let p = ev.detail.player;
+        //     let coords = ev.detail.coords;
 
             // // Test distance to next circle or circle area //
             // let markers_on_map;
@@ -717,7 +758,7 @@
         //             console.error(err.message);
         //         });
         //     }
-        });
+        // });
 
 
 
