@@ -155,7 +155,7 @@
             </div>
 
             <div class="bottom">
-                <button id="area-button">Select area (eye)</button>
+                <button id="area-button">Select eye area</button>
                 <button id="start-button" disabled>Start</button>
             </div>
         </div>
@@ -165,7 +165,8 @@
     <div id="map-background" class="background"></div>
 
     <div class="overlay">
-        <span id="timer-clock">00:00:00</span>
+        <span id="timer-clock">00:00:00</span> |
+        <span id="timer-status">Game not started</span>
     </div>
 
     <script>
@@ -187,7 +188,6 @@
         var EARTH_RADIUS = 6371;
 
         // ---- Timer ---- //
-        var time_interval = 0.1; // sec
         var time_to_next_zone = 3; // sec
         var time_pause = 5 // sec
         var str_timer_value;
@@ -365,14 +365,11 @@
         const mdbMasterControl = (() => {
             const start_button = document.getElementById('start-button');
             const area_button = document.getElementById('area-button');
-
-            // rate at which the eye of the cyclones decreases
-            const _rate = 0.8;
+            let _master = true;
 
             // Test if player is master //
             this.isMaster = () => { 
-                return !area_button.disabled || !start_button.disabled;
-                // TODO or eye selection is enabled on map
+                return _master; // TODO use settings.disabled attr
             };
 
             this.enableNextMove = () => {
@@ -390,32 +387,49 @@
 
             // Withdraw master control to (non-master) player //
             this.disable = () => { 
+                _master = false;
                 start_button.disabled = true;
                 area_button.disabled = true;
             };
 
-            // computes random coordinates s.t. 
-            // r_i = 0.8 * r_{i-1} and
-            // area_i strictly in area_{i-1} 
+            // computes random area, disjoint from and smaller than previous
             this.pickMove = (previousMove) => {
-                // no next move below 1m radius
-                if (previousMove.radius < 1) return null;
+                let eye = mdbMap.getEye(); // TODO keep in component?
 
-                let polar = {
-                    r: Math.random() * (1 - _rate) / 2 * previousMove.radius,
-                    theta: Math.random() * 2 * Math.PI
-                };
-                let cartesian = {
-                    x: polar.r * Math.cos(polar.theta),
-                    y: polar.r * Math.sin(polar.theta)
-                };
-                let c = [
-                    previousMove.coords[0] + (cartesian.y / 360000),
-                    previousMove.coords[1] + (cartesian.x / 360000)
-                ];
-                let r = _rate * previousMove.radius;
+                var new_radius_next_circle = previousMove.radius * next_circle_prop_smaller; 
+                var b = eye.radius - new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
+                
+                // Distance between next_circle and the following //
+                distance_between_next_circles += distance_between_next_circles * next_circle_prop_smaller; 
+    
+                // Check that distance_between_next_circles is still in the circle area // 
+                var c = distance_between_next_circles;
+                if (c > b){
+                    c = b;
+                    distance_between_next_circles = b;
+                } 
+    
+                // Init params in while loop //
+                var counter_loop = 0;
+                var next_center_outside_area = true;
+                var max_counter_loop = 100;
+                var coord_temp; 
+    
+                // Loop to find solution at the intersection of the circle and the area //
+                while (next_center_outside_area && counter_loop < max_counter_loop){
+                    var deg = getRandomArbitrary(0,360);
+                    coord_temp = getPoint(previousMove.coords.lat, previousMove.coords.lng, c, deg);
+                    //console.log('coord_temp',coord_temp);
+                    
+                    var dist = getDistance_between_2_coord([eye.coords.lat, eye.coords.lng], [coord_temp.lat, coord_temp.lng])
+                    //console.log('dist', counter_loop)
+                    if (dist < b){
+                        next_center_outside_area = false;
+                    }
+                    counter_loop += 1;
+                }
 
-                return { coords: c, radius: r };
+                return {coords: coord_temp, radius: new_radius_next_circle}
             };
 
             return this;
@@ -550,27 +564,41 @@
         })();
 
         const mdbTimer = (() => {
-            const _span = document.getElementById('timer-clock');
+            const _clock = document.getElementById('timer-clock');
+            const _status = document.getElementById('timer-status');
+            const _interval = 0.1; // second(s)
 
-            this.decrease_timer = () => {                
+            this.getStatus = () => {
+                // TODO
+            };
+
+            this.countDown = (duration, status) => {
+                let inc = 0;
+
+                setInterval(() => {
+                    // TODO
+
+                    inc++;
+                }, _interval);
+            };
+
+            // a callback can be provided, called
+            // when the countdown reaches 0.
+            this.decrease_timer = (cb) => {
                 var timer_type = "game";
                 var timer_value = time_to_next_zone;
 
-                // First Next Circle //
-                let d_circle = { detail: {params : array_next_circle[counter_nb_next_circle]}};
-                window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
-
                 let id = window.setInterval(() => {
                 
-                    if (timer_value > 2*time_interval) { // 2*time_interval to prevent bad approximation near zero
+                    if (timer_value > 2*_interval) { // 2*time_interval to prevent bad approximation near zero
                         // Timer //
-                        timer_value = timer_value -time_interval; // sec
+                        timer_value = timer_value -_interval; // sec
                         str_timer_value = timer_value.toString();
 
-                        _span.innerText = str_timer_value.toHHMMSS();   
-                    } 
+                        _clock.innerText = str_timer_value.toHHMMSS();   
+                    }
                     
-                    else if (timer_value <= 2*time_interval && timer_type == "game") {
+                    else if (timer_value <= 2*_interval && timer_type == "game") {
 
                         let p = mdbPlayers.me();
                         let outside = mdbMap.test_player_position_in_next_circle(p);
@@ -584,39 +612,13 @@
                         timer_type = "pause";
                     }
 
-                    else if (counter_nb_next_circle < max_counter_nb_next_circle -1) {
-                        counter_nb_next_circle += 1;
-                        let d_circle = { detail: {params : array_next_circle[counter_nb_next_circle]}};
-                        window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
-
+                    else {
+                        if (cb) cb(counter_nb_next_circle);
                         timer_type = "game";
                         timer_value = time_to_next_zone;
                     }
 
-                    else {
-                        // End of the timer and the game //
-
-                        // Print rank //
-                        if (mdbPlayers.list().length == 1){ // If you play alone
-                            if (mdbPlayers.getRank(mdbPlayers.list()) == undefined){
-                                console.log('You did it!');
-                            }
-                            else{
-                                console.log('Take a deep breath and try again when you feel it!');
-                            }                            
-                        }
-                        else{
-                            for (var player in mdbPlayers.list()) {
-                                console.log(mdbPlayers.getRank(mdbPlayers.list()[player]));
-                            }
-                            console.log(mdbPlayers.getAllRank()); //
-                        }
-
-                        window.clearInterval(id);
-                            
-                    }
-
-                }, sec_to_ms(time_interval));
+                }, _interval * 1000);
             };
 
             return this;
@@ -705,8 +707,37 @@
         });
 
         window.addEventListener('mdbNextCircle', ev => {
-            let m = ev.detail;
-            mdbMap.next_circle_area(m.params.coords, m.params.radius);
+            let m = ev.detail.params;
+            mdbMap.next_circle_area(m.coords, m.radius);
+            
+            if (mdbMasterControl.isMaster()) {
+                if (m.radius <= 1) {
+                    // TODO 1m radius OR no player within the zone
+                    // End of the timer and the game //
+                    // Print rank //
+                    if (mdbPlayers.list().length == 1){ // If you play alone
+                        if (mdbPlayers.getRank(mdbPlayers.list()) == undefined){
+                            console.log('You did it!');
+                        }
+                        else{
+                            console.log('Take a deep breath and try again when you feel it!');
+                        }                            
+                    }
+                    else{
+                        for (var player in mdbPlayers.list()) {
+                            console.log(mdbPlayers.getRank(mdbPlayers.list()[player]));
+                        }
+                        console.log(mdbPlayers.getAllRank()); //
+                    }
+                } else {
+                    // Start timer and create next_circle area //
+                    mdbTimer.decrease_timer(() => {
+                        m = mdbMasterControl.pickMove(m);
+                        let d = { detail: { params: m } }
+                        window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
+                    });
+                }
+            }
         });
 
 
@@ -787,32 +818,17 @@
 
         // ---- Create/change circular zone on click ---- //
         document.getElementById('area-button').onclick = ev => {
-            mdbMasterControl.enableNextMove();
+            mdbMasterControl.enableNextMove(); // TODO change name (eye selection)
         };
 
         document.getElementById('start-button').onclick = ev => {
-            mdbMasterControl.confirmNextMove();
+            mdbMasterControl.confirmNextMove(); // TODO change name (eye selection)
 
-            // Get coords area_circle //
-            let e = mdbMap.getEye();
-            let coords_area_circle = e.coords;
-            let radius_area_circle = e.radius;
-            let coords_previous_circle = coords_area_circle;
-            let radius_previous_circle = radius_area_circle;
-
-            // Generate next circle serie //
-            var i;
-            for (i = 0; i < nb_next_circle; i++) {
-
-                let new_next_circle = find_next_circle(coords_area_circle, radius_area_circle, coords_previous_circle, radius_previous_circle);
-                array_next_circle[i] = {coords: new_next_circle.coords, radius: new_next_circle.radius}
-                
-                coords_previous_circle = new_next_circle.coords;
-                radius_previous_circle = new_next_circle.radius;
-            }            
-
-            // Start timer and create next_circle area //
-            mdbTimer.decrease_timer();
+            // First Next Circle //
+            let init = mdbMap.getEye();
+            let m = mdbMasterControl.pickMove(init);
+            let d_circle = { detail: { params : m }};
+            window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
         };
 
         document.getElementById('menu-hotspot').onclick = ev => {
