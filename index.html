@@ -50,7 +50,7 @@
         }
 
         .sidebar {
-            z-index: 2;
+            z-index: 3;
             position: absolute;
             left: -200px;
             width: 230px;
@@ -109,6 +109,23 @@
             height: 100%;
             left: 0;
         }
+
+        .overlay {
+            background: rgba(0, 0, 0, 0.6);
+            position: absolute;
+            z-index: 2;
+            width: 100%;
+            height: 1.5em;
+            left: 0;
+            bottom: 0;
+            color: white;
+            text-align: center;
+        }
+
+        .overlay * {
+            position: inherit;
+            display: contents;
+        }
     </style>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"/>
@@ -138,25 +155,24 @@
             </div>
 
             <div class="bottom">
-                <button id="area-button">Select area</button>
-                <button id="start-button" disabled>OK</button>
+                <button id="area-button">Select area (eye)</button>
+                <button id="start-button" disabled>Start</button>
             </div>
         </div>
         <p id="menu-hotspot" class="hotspot">Tap to toggle menu</p>
     </div>
 
-    <div id="map-background" class="background">
-        <div class="leaflet-bottom leaflet-right">
-                <canvas id="myCanvas" width="150" height="450"></canvas>
-        </div>
-            
+    <div id="map-background" class="background"></div>
+
+    <div class="overlay">
+        <span id="timer-clock">00:00:00</span>
     </div>
 
     <script>
         'use strict'
 
         /**********************************************************************
-        * VARIABLES
+        * Game settings
         **********************************************************************/
         
         var Lyon_coord = [45.771774, 4.845743];
@@ -171,8 +187,6 @@
         var EARTH_RADIUS = 6371;
 
         // ---- Timer ---- //
-        var timer_id = "myCanvas";
-
         var time_interval = 0.1; // sec
         var time_to_next_zone = 3; // sec
         var time_pause = 5 // sec
@@ -184,14 +198,8 @@
         
         var last_rank = 0; // Init
 
-        var width_canvas = 200 // px
-        var height_canvas = 100 // px
-        var width_rect_timer = 150 // px
-        var height_rect_timer = 100 // px
-
-
         /**********************************************************************
-        * FUNCTION
+        * Utility functions
         **********************************************************************/
         
         // Transform second in hours, minutes and seconds //
@@ -542,11 +550,9 @@
         })();
 
         const mdbTimer = (() => {
+            const _span = document.getElementById('timer-clock');
 
-            this.decrease_timer = () => {
-                var c = document.getElementById(timer_id);
-                var ctx = c.getContext("2d");
-                
+            this.decrease_timer = () => {                
                 var timer_type = "game";
                 var timer_value = time_to_next_zone;
 
@@ -561,12 +567,7 @@
                         timer_value = timer_value -time_interval; // sec
                         str_timer_value = timer_value.toString();
 
-                        // Parameters //
-                        ctx.font = "20px Arial";
-                        ctx.fillStyle="white";
-                        ctx.fillRect(0,0,width_rect_timer, height_rect_timer);
-                        ctx.fillStyle="black";
-                        ctx.fillText(str_timer_value.toHHMMSS(),0,80);        
+                        _span.innerText = str_timer_value.toHHMMSS();   
                     } 
                     
                     else if (timer_value <= 2*time_interval && timer_type == "game") {
