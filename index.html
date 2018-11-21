@@ -155,6 +155,18 @@
             </div>
 
             <div class="bottom">
+                <div>
+                    <label for="eye-radius">Eye radius</label>
+                    <input id="eye-radius" type="number" value="3500" placeholder="in meters..."/>
+                </div>
+                <div>
+                    <label for="round-duration">Duration</label>
+                    <input id="round-duration" type="number" value="3" placeholder="in seconds..." />
+                </div>
+                <div>
+                    <label for="pause-duration">Duration (pause)</label>
+                    <input id="pause-duration" type="number" value="5" placeholder="in seconds..." />
+                </div>
                 <button id="area-button">Select eye area</button>
                 <button id="start-button" disabled>Start</button>
             </div>
@@ -173,12 +185,12 @@
         'use strict'
 
         /**********************************************************************
-        * Game settings
+        * Misc. constants
         **********************************************************************/
         
         var Lyon_coord = [45.771774, 4.845743];
-        var area_circle_radius = 3500; // meters
 
+        // TODO move game settings to side bar
 
         // ---- Next circle ---- //
         var nb_next_circle = 3;
@@ -186,15 +198,6 @@
         var next_circle_prop_smaller = 0.7;
 		var const_meter_lat_lng = 111230;
         var EARTH_RADIUS = 6371;
-
-        // ---- Timer ---- //
-        var time_to_next_zone = 3; // sec
-        var time_pause = 5 // sec
-        var str_timer_value;
-        
-        var counter_nb_next_circle = 0; // Init
-        var max_counter_nb_next_circle = 3; // Init
-        var array_next_circle = []; // Init
         
         var last_rank = 0; // Init
 
@@ -203,8 +206,8 @@
         **********************************************************************/
         
         // Transform second in hours, minutes and seconds //
-        String.prototype.toHHMMSS = function () {
-            var sec_num = parseInt(this, 10);
+        function toHHMMSS(num) {
+            var sec_num = Math.floor(num);
             var hours   = Math.floor(sec_num / 3600);
             var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
             var seconds = sec_num - (hours * 3600) - (minutes * 60);
@@ -213,43 +216,6 @@
             if (minutes < 10) {minutes = "0"+minutes;}
             if (seconds < 10) {seconds = "0"+seconds;}
             return hours+':'+minutes+':'+seconds;
-        }
-
-        function find_next_circle(coords_area_circle, radius_area_circle, coords_previous_circle, radius_previous_circle) {
-			var new_radius_next_circle = radius_previous_circle *next_circle_prop_smaller; 
-            var b = radius_area_circle -new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
-            
-            // Distance between next_circle and the following //
-            distance_between_next_circles += distance_between_next_circles *next_circle_prop_smaller; 
-
-            // Check that distance_between_next_circles is still in the circle area // 
-            var c = distance_between_next_circles;
-            if (c > b){
-                c = b;
-                distance_between_next_circles = b;
-            } 
-
-            // Init params in while loop //
-            var counter_loop = 0;
-            var next_center_outside_area = true;
-            var max_counter_loop = 100;
-            var coord_temp; 
-
-            // Loop to find solution at the intersection of the circle and the area //
-            while (next_center_outside_area && counter_loop < max_counter_loop){
-                var deg = getRandomArbitrary(0,360);
-                coord_temp = getPoint(coords_previous_circle.lat, coords_previous_circle.lng, c, deg);
-                //console.log('coord_temp',coord_temp);
-                
-                var dist = getDistance_between_2_coord([coords_area_circle.lat, coords_area_circle.lng], [coord_temp.lat, coord_temp.lng])
-                //console.log('dist', counter_loop)
-                if (dist < b){
-                    next_center_outside_area = false;
-                }
-                counter_loop += 1;
-            }
-        return {coords: coord_temp, radius: new_radius_next_circle}
-
         }
 				
 		function getPoint(lat, lng, r, deg) {
@@ -363,33 +329,51 @@
         })();
 
         const mdbMasterControl = (() => {
-            const start_button = document.getElementById('start-button');
-            const area_button = document.getElementById('area-button');
-            let _master = true;
+            const _eye_radius = document.getElementById('eye-radius');
+            const _round_duration = document.getElementById('round-duration');
+            const _pause_duration = document.getElementById('pause-duration');
+            const _start_button = document.getElementById('start-button');
+            const _area_button = document.getElementById('area-button');
 
             // Test if player is master //
             this.isMaster = () => { 
-                return _master; // TODO use settings.disabled attr
+                return !_eye_radius.disabled &&
+                       !_round_duration.disabled &&
+                       !_pause_duration.disabled;
+            };
+
+            this.getEyeRadius = () => {
+                return Number.parseInt(_eye_radius.value);
+            };
+
+            this.getRoundDuration = () => {
+                return Number.parseInt(_round_duration.value);
+            };
+
+            this.getPauseDuration = () => {
+                return Number.parseInt(_pause_duration.value);
             };
 
             this.enableNextMove = () => {
-                area_button.disabled = true;
+                _area_button.disabled = true;
                 mdbMap.enableEyeSelection(() => {
-                    start_button.disabled = false;
+                    _start_button.disabled = false;
                 });
             };
 
             this.confirmNextMove = () => {
-                start_button.disabled = true;
-                area_button.disabled = true; // TODO or not?
+                _start_button.disabled = true;
+                _area_button.disabled = true;
                 mdbMap.disableEyeSelection();
             };
 
             // Withdraw master control to (non-master) player //
-            this.disable = () => { 
-                _master = false;
-                start_button.disabled = true;
-                area_button.disabled = true;
+            this.disable = () => {
+                _eye_radius.disabled = true;
+                _round_duration.disabled = true;
+                _pause_duration.disabled = true;
+                _start_button.disabled = true;
+                _area_button.disabled = true;
             };
 
             // computes random area, disjoint from and smaller than previous
@@ -480,6 +464,19 @@
                     e.setRadius(radius);
             };
 
+            // TODO rename every occurence of 'next circle' as 'oasis'
+            this.getOasis = () => {
+                let o = _markers._next_circle_area;
+                if (o) {
+                    return {
+                        coords: o.getLatLng(),
+                        radius: o.getRadius()
+                    };
+                } else {
+                    return null;
+                }
+            };
+
             this.getEye = () => {
                 let e = _markers._eye;
                 if (e) {
@@ -496,8 +493,8 @@
             // whenever a new eye has been selected
             this.enableEyeSelection = (cb) => {
                 _m.on('click', ev => {
-                    moveEye(ev.latlng, area_circle_radius);
-                    cb();
+                    moveEye(ev.latlng, mdbMasterControl.getEyeRadius());
+                    if (cb) cb();
                 });
             };
 
@@ -569,28 +566,34 @@
             const _interval = 0.1; // second(s)
 
             this.getStatus = () => {
-                // TODO
+                return _status.innerText;
             };
 
-            this.countDown = (duration, status) => {
-                let inc = 0;
+            this.countDown = (duration, status, cb) => {
+                let countdown = duration;
 
-                setInterval(() => {
-                    // TODO
+                let id = setInterval(() => {
+                    if (countdown <= 2 * _interval) { // 2*time_interval to prevent bad approximation near zero
+                        clearInterval(id);
+                        if (cb) cb();
+                    } else {
+                        _clock.innerText = toHHMMSS(countdown); 
+                        _status.innerText = status;
 
-                    inc++;
-                }, _interval);
+                        countdown -= _interval;
+                    }
+                }, _interval * 1000); // sec to ms
             };
 
             // a callback can be provided, called
             // when the countdown reaches 0.
             this.decrease_timer = (cb) => {
                 var timer_type = "game";
-                var timer_value = time_to_next_zone;
+                var timer_value = mdbMasterControl.getRoundDuration();
 
                 let id = window.setInterval(() => {
                 
-                    if (timer_value > 2*_interval) { // 2*time_interval to prevent bad approximation near zero
+                    if (timer_value > 2*_interval) { 
                         // Timer //
                         timer_value = timer_value -_interval; // sec
                         str_timer_value = timer_value.toString();
@@ -608,14 +611,14 @@
                             }
                         }
 
-                        timer_value = time_pause;
+                        timer_value = mdbMasterControl.getPauseDuration();
                         timer_type = "pause";
                     }
 
                     else {
                         if (cb) cb(counter_nb_next_circle);
                         timer_type = "game";
-                        timer_value = time_to_next_zone;
+                        timer_value = mdbMasterControl.getRoundDuration();
                     }
 
                 }, _interval * 1000);
@@ -623,7 +626,6 @@
 
             return this;
         })();
-
 
         /**********************************************************************
          *
@@ -643,7 +645,9 @@
             // the game engine moves the eye of the cyclone
             'mdbMoveEye',
             // Next circle area
-            'mdbNextCircle'
+            'mdbNextCircle',
+            // game pauses before next round
+            'mdbMakePause'
             // // Position player in the area
             // 'mdbOut'
         ];
@@ -710,34 +714,55 @@
             let m = ev.detail.params;
             mdbMap.next_circle_area(m.coords, m.radius);
             
-            if (mdbMasterControl.isMaster()) {
-                if (m.radius <= 1) {
-                    // TODO 1m radius OR no player within the zone
-                    // End of the timer and the game //
-                    // Print rank //
-                    if (mdbPlayers.list().length == 1){ // If you play alone
-                        if (mdbPlayers.getRank(mdbPlayers.list()) == undefined){
-                            console.log('You did it!');
+            let d = ev.detail.duration;
+            mdbTimer.countDown(d, 'Round', () => {
+                let p = mdbPlayers.me();
+                let outside = mdbMap.test_player_position_in_next_circle(p);
+                if (outside){
+                    if (!mdbPlayers.getRank(p)){ // Test if rank already exist
+                        mdbPlayers.addRank();
+                    }
+                }
+
+                if (mdbMasterControl.isMaster()) {
+                    let pd = mdbMasterControl.getPauseDuration();
+                    let d = { detail: { duration: pd } };
+                    window.dispatchEvent(new CustomEvent('mdbMakePause', d));
+                }
+            });
+        });
+
+        window.addEventListener('mdbMakePause', ev => {
+            let d = ev.detail.duration;
+            mdbTimer.countDown(d, 'Pause', () => {
+                if (mdbMasterControl.isMaster()) {
+                    let m = mdbMap.getOasis();
+                    if (m.radius <= 1) {
+                        // TODO 1m radius OR no player within the zone
+                        // End of the timer and the game //
+                        // Print rank //
+                        if (mdbPlayers.list().length == 1){ // If you play alone
+                            if (mdbPlayers.getRank(mdbPlayers.list()) == undefined){
+                                console.log('You did it!');
+                            }
+                            else{
+                                console.log('Take a deep breath and try again when you feel it!');
+                            }                            
                         }
                         else{
-                            console.log('Take a deep breath and try again when you feel it!');
-                        }                            
-                    }
-                    else{
-                        for (var player in mdbPlayers.list()) {
-                            console.log(mdbPlayers.getRank(mdbPlayers.list()[player]));
+                            for (var player in mdbPlayers.list()) {
+                                console.log(mdbPlayers.getRank(mdbPlayers.list()[player]));
+                            }
+                            console.log(mdbPlayers.getAllRank()); //
                         }
-                        console.log(mdbPlayers.getAllRank()); //
-                    }
-                } else {
-                    // Start timer and create next_circle area //
-                    mdbTimer.decrease_timer(() => {
+                    } else {
                         m = mdbMasterControl.pickMove(m);
-                        let d = { detail: { params: m } }
+                        let rd = mdbMasterControl.getRoundDuration();
+                        let d = { detail: { params: m, duration: rd } };
                         window.dispatchEvent(new CustomEvent('mdbNextCircle', d));
-                    });
+                    }
                 }
-            }
+            });
         });
 
 
@@ -827,7 +852,8 @@
             // First Next Circle //
             let init = mdbMap.getEye();
             let m = mdbMasterControl.pickMove(init);
-            let d_circle = { detail: { params : m }};
+            let rd = mdbMasterControl.getRoundDuration();
+            let d_circle = { detail: { params : m, duration: rd }};
             window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
         };
 
