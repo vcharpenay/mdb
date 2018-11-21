@@ -865,7 +865,7 @@
         //  - ws://broker.hivemq.com:8000
         //  - ws://mqtt.dioty.co:8080
         //  - ws://mqtt.fluux.io
-        let mqttClient = mqtt.connect('ws://iot.eclipse.org:80/ws'); // TODO wss
+        let mqttClient = mqtt.connect('wss://iot.eclipse.org:443/ws');
         mqttClient.on('connect', function() { console.log('connected'); });
 
         mqttClient.on('message', (topic, msg) => {
