@@ -194,7 +194,7 @@
         // TODO move game settings to side bar
 
         // ---- Next circle ---- //
-        var nb_next_circle = 3;
+        var max_nb_oasis = 3;
         var distance_between_next_circles = 100; // meter
         var next_circle_prop_smaller = 0.7;
 		var const_meter_lat_lng = 111230;
@@ -438,6 +438,8 @@
                 // TODO out-of-the-game
             };
 
+            let nb_oasis = 0;
+
             let uri = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png' +
                       '?access_token=' + _token;
             let layer = L.tileLayer(uri, {
@@ -449,6 +451,14 @@
             // Lyon, tavu
             _m.setView(Lyon_coord, 14);
 
+            this.get_nb_oasis = () => {
+                return nb_oasis;
+            }
+            
+            this.set_nb_oasis = (val) => {
+                nb_oasis = val;
+            }
+            
             this.next_circle_area = (coords, radius) => {
                 let position = coords;
                 let e = _markers._next_circle_area;
@@ -589,41 +599,41 @@
 
             // a callback can be provided, called
             // when the countdown reaches 0.
-            this.decrease_timer = (cb) => {
-                var timer_type = "game";
-                var timer_value = mdbMasterControl.getRoundDuration();
+        //     this.decrease_timer = (cb) => {
+        //         var timer_type = "game";
+        //         var timer_value = mdbMasterControl.getRoundDuration();
 
-                let id = window.setInterval(() => {
+        //         let id = window.setInterval(() => {
                     
-                    if (timer_value > 2*_interval) { 
-                        // Timer //
-                        timer_value = timer_value -_interval; // sec
-                        str_timer_value = timer_value.toString();
+        //             if (timer_value > 2*_interval) { 
+        //                 // Timer //
+        //                 timer_value = timer_value -_interval; // sec
+        //                 str_timer_value = timer_value.toString();
 
-                        _clock.innerText = str_timer_value.toHHMMSS();   
-                    }
+        //                 _clock.innerText = str_timer_value.toHHMMSS();   
+        //             }
                     
-                    else if (timer_value <= 2*_interval && timer_type == "game") {
+        //             else if (timer_value <= 2*_interval && timer_type == "game") {
 
-                        let p = mdbPlayers.me();
-                        let outside = mdbMap.test_player_position_in_next_circle(p);
-                        if (outside){
-                            if (!mdbPlayers.getRank(p)){ // Test if rank already exist
-                                mdbPlayers.addRank();
-                            }
-                        }
+        //                 let p = mdbPlayers.me();
+        //                 let outside = mdbMap.test_player_position_in_next_circle(p);
+        //                 if (outside){
+        //                     if (!mdbPlayers.getRank(p)){ // Test if rank already exist
+        //                         mdbPlayers.addRank();
+        //                     }
+        //                 }
 
-                        timer_value = mdbMasterControl.getPauseDuration();
-                        timer_type = "pause";
-                    }
+        //                 timer_value = mdbMasterControl.getPauseDuration();
+        //                 timer_type = "pause";
+        //             }
 
-                    else {
-                        if (cb) cb(counter_nb_next_circle);
-                        timer_type = "game";
-                        timer_value = mdbMasterControl.getRoundDuration();
-                    }
-                }, _interval * 1000);
-            };
+        //             else {
+        //                 if (cb) cb(counter_nb_next_circle);
+        //                 timer_type = "game";
+        //                 timer_value = mdbMasterControl.getRoundDuration();
+        //             }
+        //         }, _interval * 1000);
+        //     };
 
             return this;
         })();
@@ -714,6 +724,7 @@
         window.addEventListener('mdbNextCircle', ev => {
             let m = ev.detail.params;
             mdbMap.next_circle_area(m.coords, m.radius);
+            mdbMap.set_nb_oasis(mdbMap.get_nb_oasis()+1);
             
             let d = ev.detail.duration;
             mdbTimer.countDown(d, 'Round', () => {
@@ -735,10 +746,11 @@
 
         window.addEventListener('mdbMakePause', ev => {
             let d = ev.detail.duration;
+            console.log('Nb Oasis', mdbMap.get_nb_oasis())
             mdbTimer.countDown(d, 'Pause', () => {
                 if (mdbMasterControl.isMaster()) {
                     let m = mdbMap.getOasis();
-                    if (m.radius <= 1) {
+                    if (m.radius <= 1 || mdbMap.get_nb_oasis() >= max_nb_oasis) {
                         // TODO 1m radius OR no player within the zone
                         // End of the timer and the game //
                         // Print rank //
