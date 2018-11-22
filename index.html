@@ -689,7 +689,7 @@
                     window.dispatchEvent(new CustomEvent('mdbMoveError', d));
                     
                     console.error(err.message);
-                });
+                }, {enableHighAccuracy: true});
             }
         });
 
