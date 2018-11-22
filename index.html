@@ -131,6 +131,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"/>
 
     <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>
+    <script type='text/javascript' src="./HackTimer.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
@@ -573,6 +574,7 @@
                 let countdown = duration;
 
                 let id = setInterval(() => {
+                
                     if (countdown <= 2 * _interval) { // 2*time_interval to prevent bad approximation near zero
                         clearInterval(id);
                         if (cb) cb();
@@ -592,7 +594,7 @@
                 var timer_value = mdbMasterControl.getRoundDuration();
 
                 let id = window.setInterval(() => {
-                
+                    
                     if (timer_value > 2*_interval) { 
                         // Timer //
                         timer_value = timer_value -_interval; // sec
@@ -620,7 +622,6 @@
                         timer_type = "game";
                         timer_value = mdbMasterControl.getRoundDuration();
                     }
-
                 }, _interval * 1000);
             };
 
@@ -766,61 +767,7 @@
         });
 
 
-        // window.addEventListener('mdbOut', ev => {
-        //     let p = ev.detail.player;
-        //     let coords = ev.detail.coords;
-
-            // // Test distance to next circle or circle area //
-            // let markers_on_map;
-            // console.log('lol', markers_on_map)
-            // if (markers_on_map._next_circle_area){
-            //     let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._next_circle_area.getLatLng().lat, markers_on_map._next_circle_area.getLatLng().lng]);
-            //     console.log('prout', dist_temp, markers_on_map._next_circle_area.getRadius());
-            //     if (dist_temp > markers_on_map._next_circle_area.getRadius()) {
-            //         console.log('pipi', dist_temp);
-            //     }
-            // }
-            // else if (markers_on_map._area_circle){
-            //     let dist_temp = getDistance_between_2_coord(coords, [markers_on_map._area_circle.getLatLng().lat, markers_on_map._area_circle.getLatLng().lng]);
-            //     console.log('prout', dist_temp, markers_on_map._area_circle.getRadius());
-            //     if (dist_temp > markers_on_map._area_circle.getRadius()) {
-            //         console.log('caca', dist_temp);
-            //     }
-            // }
-
-        //     if ( != mdbPlayers.me()) {
-        //         if (mdbMasterControl.isMaster()) {
-        //             let otherEv = new CustomEvent('mdbRecallPresent', {
-        //                 detail: { present: mdbPlayers.list() }
-        //             });
-        //             window.dispatchEvent(otherEv);
-        //         }
-                
-        //         mdbPlayers.add(ev.detail.player, false);
-        //     } 
-        //     // If it is the first player in the room: the master //
-        //     else {
-        //         mdbMasterControl.ButtonsStatusMaster() // Adjust buttons status
-        //         let id = navigator.geolocation.watchPosition(pos => {
-        //             let p = mdbPlayers.me();
-        //             let coords = [pos.coords.latitude, pos.coords.longitude];
-
-        //             let d = { detail: { player: p, coords: coords } };
-        //             window.dispatchEvent(new CustomEvent('mdbMove', d));
-        //         }, (err) => {
-        //             let p = mdbPlayers.me();
-        //             let d = { detail: { player: p }};
-        //             window.dispatchEvent(new CustomEvent('mdbMoveError', d));
-                    
-        //             console.error(err.message);
-        //         });
-        //     }
-        // });
-
-
-
-
-
+        
         document.getElementById('enter-button').onclick = ev => {
             let pi = document.getElementById('player-input'),
                 ri = document.getElementById('room-input'),
