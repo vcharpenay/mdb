@@ -456,6 +456,7 @@
                 // TODO out-of-the-game
             };
 
+            const _ZIndex_to_front = 5;
             let nb_oasis = 0;
 
             let uri = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png' +
@@ -588,26 +589,35 @@
 
             this.create_overlay_player = () => {
 
+                let list_marker_areas = [_markers._eye, _markers._next_circle_area];
+                let list_marker_players = [];
+
                 if(mdbPlayers.list().length == 1){
                     console.log(_markers[mdbPlayers.list()]);
+                    list_marker_players.push(_markers[mdbPlayers.list()]);
                 }
-                else{
+                else{ // Create button to display players marker as an overlay on map
                     var player_ith;
                     for (player_ith in mdbPlayers.list()){
-                        console.log('aaaaaaaaah');
-                        console.log(_markers[player_ith]);
+                        list_marker_players.push(_markers[mdbPlayers.list()[player_ith]]);
+                        console.log(_markers[mdbPlayers.list()[player_ith]]);
+
                     }
                 }
-                // list_marker_players = [];
-                // L.layerGroup            
-                // var overlay_Map = {
-                //     "Players": _markers[mdbPlayers.list()];
-                // };
+                var marker_areas = L.layerGroup(list_marker_areas);
+                var marker_players = L.layerGroup(list_marker_players);
+                
+                // Set marker players to front //
+                marker_players.eachLayer(function (layer) {
+                    layer.bringToFront();
+                });
 
-
+                var overlay_Map = {
+                    "Players": marker_players,
+                    "Areas": marker_areas
+                };
+                L.control.layers(null, overlay_Map).addTo(_m);
             };
-
-
 
             return this;
         })();
@@ -699,9 +709,9 @@
             // Next circle area
             'mdbNextCircle',
             // game pauses before next round
-            'mdbMakePause'
-            // // Position player in the area
-            // 'mdbOut'
+            'mdbMakePause',
+            // overlay marker player
+            'mdbOverlayMarkerPlayer'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -762,6 +772,11 @@
             mdbMap.moveEye(m.coords, m.radius);
         });
 
+        window.addEventListener('mdbOverlayMarkerPlayer', ev => {
+            mdbMap.create_overlay_player();
+        });
+
+
         window.addEventListener('mdbNextCircle', ev => {
             let m = ev.detail.params;
             mdbMap.next_circle_area(m.coords, m.radius);
@@ -770,7 +785,6 @@
             let d = ev.detail.duration;
             mdbTimer.countDown(d, 'Round', () => {
                 let p = mdbPlayers.me();
-                console.log('ploplpotlpot', p);
                 let outside = mdbMap.test_player_position_in_next_circle(p);
                 if (outside){
                     if (!mdbPlayers.getRank(p)){ // Test if rank already exist
@@ -851,8 +865,6 @@
 
         document.getElementById('start-button').onclick = ev => {
 
-            mdbMap.create_overlay_player();
-
             mdbMasterControl.confirmNextMove(); // TODO change name (eye selection)
 
             // First Next Circle //
@@ -861,6 +873,11 @@
             let rd = mdbMasterControl.getRoundDuration();
             let d_circle = { detail: { params : m, duration: rd }};
             window.dispatchEvent(new CustomEvent('mdbNextCircle', d_circle));
+
+            // Create overlay marker player //
+            let d_empty = { detail: { }};
+            window.dispatchEvent(new CustomEvent('mdbOverlayMarkerPlayer', d_empty));
+
         };
 
         document.getElementById('menu-hotspot').onclick = ev => {
