@@ -102,6 +102,10 @@
             text-decoration-line: underline;
         }
 
+        span.underline {
+            text-decoration-line: underline;
+        }
+        
         .background {
             position: absolute;
             z-index: 1;
@@ -133,6 +137,7 @@
     <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>
     <script type='text/javascript' src="./HackTimer.js"></script>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
 </head>
 <body>
     <div id="enter-modal" class="modal">
@@ -151,14 +156,14 @@
             <p>Players:</p>
             <div>
                 <ul id="player-list">
-                    <li id="player-me" class="highlight"></li>
+                    <li id="player-me"><span title="name" class="underline">Heey!</span>(<span title="rank">12th</span>|<span title="nb-rounds">played 6 rounds</span>)</li>
                 </ul>
             </div>
 
             <div class="bottom">
                 <div>
                     <label for="eye-radius">Eye radius</label>
-                    <input id="eye-radius" type="number" value="3500" placeholder="in meters..."/>
+                    <input id="eye-radius" type="number" value="1500" placeholder="in meters..."/>
                 </div>
                 <div>
                     <label for="round-duration">Duration</label>
@@ -271,6 +276,12 @@
             return Math.floor(time/time_interval);
         }
 
+        function handleElement () {
+            var id = this.id
+            // Do something with `id`
+            console.log(id)
+            }
+
         /**********************************************************************
          *
          * React-like application components
@@ -298,14 +309,23 @@
 
             this.list = () => {
                 let l = [];
-                let nodes = _ul.getElementsByTagName('li');
-                for (let li of nodes) { l.push(li.innerText); }
+                let li = _ul.getElementsByTagName('li');
+                var li_ith;
+                for(li_ith = 0; li_ith < li.length; li_ith++) {
+                    let spans = li[li_ith].getElementsByTagName('span'); // liste de spans, dans l'ordre
+                    l.push(spans[0].innerText);
+                    }
                 return l;
             };
 
-            this.add = (player, isMe) => {
-                if (isMe) { _li.innerText = player }
-                else { _ul.innerHTML += '<li>' + player + '</li>'; }
+            this.add = (player, isMe) => {               
+                if (isMe) {
+                    let spans = _li.getElementsByTagName('span'); // liste de spans, dans l'ordre
+                    spans[0].innerText = player; 
+                    }
+                else{
+                    _ul.innerHTML += '<li><span title="name">' +player +'</span><span title="rank"></span><span title="nb-rounds"></span></li>';
+                    }
             };
 
             this.timeout = (player, isMe) => {
@@ -314,7 +334,10 @@
                 // else { _ul.innerHTML += 'pipi'; }
             };
 
-            this.me = () => { return _li.innerText; };
+            this.me = () => { 
+                let spans = _li.getElementsByTagName('span'); // liste de spans, dans l'ordre
+                return spans[0].innerText;
+                };
 
             this.addRank = () => {
                 last_rank -= 1;
@@ -718,6 +741,7 @@
 
         window.addEventListener('mdbEnter', ev => {
             // If a player join a room already created //
+            console.log('mdbPlayers.list()', mdbPlayers.list());
             if (ev.detail.player != mdbPlayers.me()) {
                 if (mdbMasterControl.isMaster()) {
                     let otherEv = new CustomEvent('mdbRecallPresent', {
@@ -750,6 +774,8 @@
             // TODO manage page reloading (duplicate entries/no entry)
             if (!ev.detail.present.includes(mdbPlayers.me())) {
                 mdbMasterControl.disable();
+                console.log('ev.detail.present',ev.detail.present)
+                ev.detail.present.forEach(p => console.log(p));
                 ev.detail.present.forEach(p => mdbPlayers.add(p, false));
             }
         }, { once: true });
