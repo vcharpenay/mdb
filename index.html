@@ -523,7 +523,8 @@
             // whenever a new eye has been selected
             this.enableEyeSelection = (cb) => {
                 _m.on('click', ev => {
-                    moveEye(ev.latlng, mdbMasterControl.getEyeRadius());
+                    let d = { detail: { move: {coords: ev.latlng, radius: mdbMasterControl.getEyeRadius() }}};
+                    window.dispatchEvent(new CustomEvent('mdbMoveEye', d));
                     if (cb) cb();
                 });
             };
@@ -611,7 +612,8 @@
                 marker_players.eachLayer(function (layer) {
                     layer.bringToFront();
                 });
-
+                
+                // Add control layers button //
                 var overlay_Map = {
                     "Players": marker_players,
                     "Areas": marker_areas
