@@ -156,7 +156,7 @@
             <p>Players:</p>
             <div>
                 <ul id="player-list">
-                    <li id="player-me"><span title="name" class="underline">Heey!</span>(<span title="rank">12th</span>|<span title="nb-rounds">played 6 rounds</span>)</li>
+                    <li id="player-me"><span title="name" class="underline">Heey!</span><span title="rank"></span><span title="nb-rounds"></span></li>
                 </ul>
             </div>
 
@@ -318,6 +318,8 @@
                 return l;
             };
 
+            this.nb_players = () => {return _ul.getElementsByTagName('li').length;}
+
             this.add = (player, isMe) => {               
                 if (isMe) {
                     let spans = _li.getElementsByTagName('span'); // liste de spans, dans l'ordre
@@ -329,13 +331,8 @@
             };
 
             this.timeout = (player, isMe) => {
-                console.log('isme', _ul);
                 if (isMe) {
-                    let spans = _li.getElementsByTagName('span'); // liste de spans, dans l'ordre
-                    
-                    spans[0].innerText = 'pipi';
-                    spans[2].innerText = 'prouuuuut';
-                    console.log('spans',spans);
+                    document.querySelector('#player-me span[title=nb-rounds]').innerText = ' | Rounds:'+mdbMap.get_nb_oasis();
                     }
                 // else { _ul.innerHTML += 'pipi'; }
             };
@@ -360,6 +357,8 @@
                     else{ // start at 2nd position
                         _list_rank[list()[key]] = _list_rank[list()[key]] -last_rank +2;
                     }
+                    document.querySelector('#player-me span[title=rank]').innerText = ' | Rank:'+_list_rank[list()[key]];
+
                 }
                 return _list_rank;
                 };
@@ -678,44 +677,6 @@
                 }, _interval * 1000); // sec to ms
             };
 
-            // a callback can be provided, called
-            // when the countdown reaches 0.
-        //     this.decrease_timer = (cb) => {
-        //         var timer_type = "game";
-        //         var timer_value = mdbMasterControl.getRoundDuration();
-
-        //         let id = window.setInterval(() => {
-                    
-        //             if (timer_value > 2*_interval) { 
-        //                 // Timer //
-        //                 timer_value = timer_value -_interval; // sec
-        //                 str_timer_value = timer_value.toString();
-
-        //                 _clock.innerText = str_timer_value.toHHMMSS();   
-        //             }
-                    
-        //             else if (timer_value <= 2*_interval && timer_type == "game") {
-
-        //                 let p = mdbPlayers.me();
-        //                 let outside = mdbMap.test_player_position_in_next_circle(p);
-        //                 if (outside){
-        //                     if (!mdbPlayers.getRank(p)){ // Test if rank already exist
-        //                         mdbPlayers.addRank();
-        //                     }
-        //                 }
-
-        //                 timer_value = mdbMasterControl.getPauseDuration();
-        //                 timer_type = "pause";
-        //             }
-
-        //             else {
-        //                 if (cb) cb(counter_nb_next_circle);
-        //                 timer_type = "game";
-        //                 timer_value = mdbMasterControl.getRoundDuration();
-        //             }
-        //         }, _interval * 1000);
-        //     };
-
             return this;
         })();
 
@@ -743,7 +704,9 @@
             // overlay marker player
             'mdbOverlayMarkerPlayer',
             // Player out
-            'mdbPlayerOut'
+            'mdbPlayerOut',
+            // Rank all players at the end
+            'mdbFinalRank'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -815,6 +778,12 @@
             mdbPlayers.timeout(p, true);
 
         });
+        window.addEventListener('mdbFinalRank', ev => {
+            mdbPlayers.getAllRank();
+        });
+
+                            
+        
 
         window.addEventListener('mdbNextCircle', ev => {
             let m = ev.detail.params;
@@ -830,7 +799,6 @@
                         let d_out = { detail: { player: p } };
                         window.dispatchEvent(new CustomEvent('mdbPlayerOut', d_out));
                     }
-
                 }
 
                 if (mdbMasterControl.isMaster()) {
@@ -843,11 +811,11 @@
 
         window.addEventListener('mdbMakePause', ev => {
             let d = ev.detail.duration;
-            console.log('Nb Oasis', mdbMap.get_nb_oasis())
+            console.log('mdbPlayers.nb_players()', mdbPlayers.nb_players(), last_rank);
             mdbTimer.countDown(d, 'Pause', () => {
                 if (mdbMasterControl.isMaster()) {
                     let m = mdbMap.getOasis();
-                    if (m.radius <= 1 || mdbMap.get_nb_oasis() >= max_nb_oasis) {
+                    if (m.radius <= 1 || mdbMap.get_nb_oasis() >= max_nb_oasis || last_rank <= -mdbPlayers.nb_players()) {
                         // TODO 1m radius OR no player within the zone
                         // End of the timer and the game //
                         // Print rank //
@@ -860,10 +828,8 @@
                             }                            
                         }
                         else{
-                            // for (var player in mdbPlayers.list()) {
-                            //     console.log(mdbPlayers.getRank(mdbPlayers.list()[player]));
-                            // }
-                            console.log(mdbPlayers.getAllRank()); //
+                            let d_rank = { detail: { params: 'empty' } };
+                            window.dispatchEvent(new CustomEvent('mdbFinalRank', d_rank)); 
                         }
                     } else {
                         m = mdbMasterControl.pickMove(m);
