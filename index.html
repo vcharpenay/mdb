@@ -368,7 +368,7 @@
             };
 
             this.getPropNextOasis = () => {
-                return Number.parseInt(_prop_next_oasis.value);
+                return Number.parseFloat(_prop_next_oasis.value);
             };
 
 
@@ -399,11 +399,11 @@
             this.pickMove = (previousMove) => {
                 let eye = mdbMap.getEye(); // TODO keep in component?
 
-                var new_radius_next_circle = previousMove.radius * mdbMasterControl.getPropNextOasis(); 
+                var new_radius_next_circle = previousMove.radius * getPropNextOasis(); 
                 var b = eye.radius - new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
                 
                 // Distance between next_circle and the following //
-                distance_between_next_circles += distance_between_next_circles * mdbMasterControl.getPropNextOasis(); 
+                distance_between_next_circles += distance_between_next_circles * getPropNextOasis(); 
     
                 // Check that distance_between_next_circles is still in the circle area // 
                 var c = distance_between_next_circles;
@@ -592,8 +592,10 @@
                     console.log(_markers[mdbPlayers.list()]);
                 }
                 else{
-                    for (player in mdbPlayers.list()){
-
+                    var player_ith;
+                    for (player_ith in mdbPlayers.list()){
+                        console.log('aaaaaaaaah');
+                        console.log(_markers[player_ith]);
                     }
                 }
                 // list_marker_players = [];
