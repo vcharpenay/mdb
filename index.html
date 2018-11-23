@@ -203,7 +203,7 @@
         // TODO move game settings to side bar
 
         // ---- Next circle ---- //
-        var max_nb_oasis = 3;
+        var max_nb_oasis = 100;
         var distance_between_next_circles = 100; // meter
         var next_circle_prop_smaller = 0.7;
 		var const_meter_lat_lng = 111230;
@@ -753,9 +753,10 @@
             let coords = ev.detail.coords;
             mdbMap.move(p, coords);
 
-            if (p == mdbPlayers.me()) {
-                mdbMap.center(coords);
-            }          
+            // Not for this version //
+            // if (p == mdbPlayers.me()) {
+            //     mdbMap.center(coords);
+            // }          
         });
 
         window.addEventListener('mdbMoveError', ev => {
