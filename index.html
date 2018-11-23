@@ -168,6 +168,10 @@
                     <label for="pause-duration">Duration (pause)</label>
                     <input id="pause-duration" type="number" value="5" placeholder="in seconds..." />
                 </div>
+                <div>
+                    <label for="prop-next-oasis">Prop next oasis</label>
+                    <input id="prop-next-oasis" type="number" value="0.7" placeholder="proportion..." />
+                </div>
                 <button id="area-button">Select eye area</button>
                 <button id="start-button" disabled>Start</button>
             </div>
@@ -194,7 +198,7 @@
         // TODO move game settings to side bar
 
         // ---- Next circle ---- //
-        var max_nb_oasis = 3;
+        var max_nb_oasis = 100;
         var distance_between_next_circles = 100; // meter
         var next_circle_prop_smaller = 0.7;
 		var const_meter_lat_lng = 111230;
@@ -304,6 +308,12 @@
                 else { _ul.innerHTML += '<li>' + player + '</li>'; }
             };
 
+            this.timeout = (player, isMe) => {
+                console.log('isme', _ul);
+                // if (isMe) { _li.innerText += 'pipi' }
+                // else { _ul.innerHTML += 'pipi'; }
+            };
+
             this.me = () => { return _li.innerText; };
 
             this.addRank = () => {
@@ -333,6 +343,7 @@
             const _eye_radius = document.getElementById('eye-radius');
             const _round_duration = document.getElementById('round-duration');
             const _pause_duration = document.getElementById('pause-duration');
+            const _prop_next_oasis = document.getElementById('prop-next-oasis');
             const _start_button = document.getElementById('start-button');
             const _area_button = document.getElementById('area-button');
 
@@ -340,7 +351,8 @@
             this.isMaster = () => { 
                 return !_eye_radius.disabled &&
                        !_round_duration.disabled &&
-                       !_pause_duration.disabled;
+                       !_pause_duration.disabled &&
+                       !_prop_next_oasis.disabled;
             };
 
             this.getEyeRadius = () => {
@@ -354,6 +366,11 @@
             this.getPauseDuration = () => {
                 return Number.parseInt(_pause_duration.value);
             };
+
+            this.getPropNextOasis = () => {
+                return Number.parseInt(_prop_next_oasis.value);
+            };
+
 
             this.enableNextMove = () => {
                 _area_button.disabled = true;
@@ -373,6 +390,7 @@
                 _eye_radius.disabled = true;
                 _round_duration.disabled = true;
                 _pause_duration.disabled = true;
+                _prop_next_oasis.disabled = true;
                 _start_button.disabled = true;
                 _area_button.disabled = true;
             };
@@ -381,11 +399,11 @@
             this.pickMove = (previousMove) => {
                 let eye = mdbMap.getEye(); // TODO keep in component?
 
-                var new_radius_next_circle = previousMove.radius * next_circle_prop_smaller; 
+                var new_radius_next_circle = previousMove.radius * mdbMasterControl.getPropNextOasis(); 
                 var b = eye.radius - new_radius_next_circle; // radius of circle area where will be the center of the next_cirle < circle_area
                 
                 // Distance between next_circle and the following //
-                distance_between_next_circles += distance_between_next_circles * next_circle_prop_smaller; 
+                distance_between_next_circles += distance_between_next_circles * mdbMasterControl.getPropNextOasis(); 
     
                 // Check that distance_between_next_circles is still in the circle area // 
                 var c = distance_between_next_circles;
@@ -568,6 +586,27 @@
 
             this.center = coords => { _m.setView(coords); };
 
+            this.create_overlay_player = () => {
+
+                if(mdbPlayers.list().length == 1){
+                    console.log(_markers[mdbPlayers.list()]);
+                }
+                else{
+                    for (player in mdbPlayers.list()){
+
+                    }
+                }
+                // list_marker_players = [];
+                // L.layerGroup            
+                // var overlay_Map = {
+                //     "Players": _markers[mdbPlayers.list()];
+                // };
+
+
+            };
+
+
+
             return this;
         })();
 
@@ -729,11 +768,14 @@
             let d = ev.detail.duration;
             mdbTimer.countDown(d, 'Round', () => {
                 let p = mdbPlayers.me();
+                console.log('ploplpotlpot', p);
                 let outside = mdbMap.test_player_position_in_next_circle(p);
                 if (outside){
                     if (!mdbPlayers.getRank(p)){ // Test if rank already exist
                         mdbPlayers.addRank();
+                        mdbPlayers.timeout(p, true);
                     }
+
                 }
 
                 if (mdbMasterControl.isMaster()) {
@@ -806,6 +848,9 @@
         };
 
         document.getElementById('start-button').onclick = ev => {
+
+            mdbMap.create_overlay_player();
+
             mdbMasterControl.confirmNextMove(); // TODO change name (eye selection)
 
             // First Next Circle //
