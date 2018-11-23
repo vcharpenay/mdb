@@ -203,7 +203,7 @@
         // TODO move game settings to side bar
 
         // ---- Next circle ---- //
-        var max_nb_oasis = 100;
+        var max_nb_oasis = 3;
         var distance_between_next_circles = 100; // meter
         var next_circle_prop_smaller = 0.7;
 		var const_meter_lat_lng = 111230;
@@ -330,7 +330,13 @@
 
             this.timeout = (player, isMe) => {
                 console.log('isme', _ul);
-                // if (isMe) { _li.innerText += 'pipi' }
+                if (isMe) {
+                    let spans = _li.getElementsByTagName('span'); // liste de spans, dans l'ordre
+                    
+                    spans[0].innerText = 'pipi';
+                    spans[2].innerText = 'prouuuuut';
+                    console.log('spans',spans);
+                    }
                 // else { _ul.innerHTML += 'pipi'; }
             };
 
@@ -479,7 +485,6 @@
                 // TODO out-of-the-game
             };
 
-            const _ZIndex_to_front = 5;
             let nb_oasis = 0;
 
             let uri = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png' +
@@ -736,7 +741,9 @@
             // game pauses before next round
             'mdbMakePause',
             // overlay marker player
-            'mdbOverlayMarkerPlayer'
+            'mdbOverlayMarkerPlayer',
+            // Player out
+            'mdbPlayerOut'
         ];
 
         window.addEventListener('mdbEnter', ev => {
@@ -774,8 +781,6 @@
             // TODO manage page reloading (duplicate entries/no entry)
             if (!ev.detail.present.includes(mdbPlayers.me())) {
                 mdbMasterControl.disable();
-                console.log('ev.detail.present',ev.detail.present)
-                ev.detail.present.forEach(p => console.log(p));
                 ev.detail.present.forEach(p => mdbPlayers.add(p, false));
             }
         }, { once: true });
@@ -804,6 +809,12 @@
             mdbMap.create_overlay_player();
         });
 
+        window.addEventListener('mdbPlayerOut', ev => {
+            let p = ev.detail.player;
+            mdbPlayers.addRank();
+            mdbPlayers.timeout(p, true);
+
+        });
 
         window.addEventListener('mdbNextCircle', ev => {
             let m = ev.detail.params;
@@ -816,8 +827,8 @@
                 let outside = mdbMap.test_player_position_in_next_circle(p);
                 if (outside){
                     if (!mdbPlayers.getRank(p)){ // Test if rank already exist
-                        mdbPlayers.addRank();
-                        mdbPlayers.timeout(p, true);
+                        let d_out = { detail: { player: p } };
+                        window.dispatchEvent(new CustomEvent('mdbPlayerOut', d_out));
                     }
 
                 }
@@ -849,9 +860,9 @@
                             }                            
                         }
                         else{
-                            for (var player in mdbPlayers.list()) {
-                                console.log(mdbPlayers.getRank(mdbPlayers.list()[player]));
-                            }
+                            // for (var player in mdbPlayers.list()) {
+                            //     console.log(mdbPlayers.getRank(mdbPlayers.list()[player]));
+                            // }
                             console.log(mdbPlayers.getAllRank()); //
                         }
                     } else {
