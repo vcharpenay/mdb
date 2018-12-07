@@ -209,7 +209,7 @@
 		var const_meter_lat_lng = 111230;
         var EARTH_RADIUS = 6371;
         
-        var last_rank = 0; // Init
+        // var last_rank = 0; // Init
 
         /**********************************************************************
         * Utility functions
@@ -306,6 +306,7 @@
             const _ul = document.getElementById('player-list');
             const _li = document.getElementById('player-me');
             let _list_rank = {};
+            let last_rank = 0;
 
             this.list = () => {
                 let l = [];
@@ -334,7 +335,9 @@
                 if (isMe) {
                     document.querySelector('#player-me span[title=nb-rounds]').innerText = ' | Rounds:'+mdbMap.get_nb_oasis();
                     }
-                // else { _ul.innerHTML += 'pipi'; }
+                else { 
+                    //.querySelector('span[title=nb-rounds]').innerText = 'lol';
+                    }
             };
 
             this.me = () => { 
@@ -347,6 +350,10 @@
                 _list_rank[_li.innerText] = last_rank;
                 // console.log(_list_rank);
             };
+
+            this.get_last_rank = () => {
+                return last_rank;
+            }
 
             this.getRank = (player) => {return _list_rank[player]; };
             this.getAllRank = () => {
@@ -812,11 +819,11 @@
 
         window.addEventListener('mdbMakePause', ev => {
             let d = ev.detail.duration;
-            console.log('mdbPlayers.nb_players()', mdbPlayers.nb_players(), last_rank);
+            console.log('mdbPlayers.nb_players()', mdbPlayers.nb_players(), mdbPlayers.get_last_rank());
             mdbTimer.countDown(d, 'Pause', () => {
                 if (mdbMasterControl.isMaster()) {
                     let m = mdbMap.getOasis();
-                    if (m.radius <= 1 || mdbMap.get_nb_oasis() >= max_nb_oasis || last_rank <= -mdbPlayers.nb_players()) {
+                    if (m.radius <= 1 || mdbMap.get_nb_oasis() >= max_nb_oasis || -mdbPlayers.get_last_rank() <= mdbPlayers.nb_players()) {
                         // TODO 1m radius OR no player within the zone
                         // End of the timer and the game //
                         // Print rank //
