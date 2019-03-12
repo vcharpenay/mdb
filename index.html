@@ -332,11 +332,23 @@
             };
 
             this.timeout = (player, isMe) => {
+                console.log('aofjgzekjvncaefpkjnvée', isMe);
                 if (isMe) {
                     document.querySelector('#player-me span[title=nb-rounds]').innerText = ' | Rounds:'+mdbMap.get_nb_oasis();
                     }
                 else { 
-                    //.querySelector('span[title=nb-rounds]').innerText = 'lol';
+                    let li = _ul.getElementsByTagName('li');
+                    var li_ith;
+                    for(li_ith = 0; li_ith < li.length; li_ith++) {
+                        let spans = li[li_ith].getElementsByTagName('span'); // liste de spans, dans l'ordre
+                        console.log('zooooooob');
+                        if (spans[0].innerText == player) {
+                            console.log('naaan');
+                            spans[2].innerText = ' | Rounds:'+mdbMap.get_nb_oasis();
+                        }                        
+                    }
+
+                    //.querySelector('#player span[title=name]').innerText = 'lol';
                     }
             };
 
@@ -720,6 +732,7 @@
             // If a player join a room already created //
             console.log('mdbPlayers.list()', mdbPlayers.list());
             if (ev.detail.player != mdbPlayers.me()) {
+                console.log('cacacaaaaaa')
                 if (mdbMasterControl.isMaster()) {
                     let otherEv = new CustomEvent('mdbRecallPresent', {
                         detail: { present: mdbPlayers.list() }
@@ -734,7 +747,7 @@
                 let id = navigator.geolocation.watchPosition(pos => {
                     let p = mdbPlayers.me();
                     let coords = [pos.coords.latitude, pos.coords.longitude];
-
+                    mdbMap.center(coords) // Center the map on the master
                     let d = { detail: { player: p, coords: coords } };
                     window.dispatchEvent(new CustomEvent('mdbMove', d));
                 }, (err) => {
@@ -742,7 +755,7 @@
                     let d = { detail: { player: p }};
                     window.dispatchEvent(new CustomEvent('mdbMoveError', d));
                     
-                    console.error(err.message);
+                    console.error('err.message', err.message);
                 }, {enableHighAccuracy: true});
             }
         });
@@ -750,6 +763,7 @@
         window.addEventListener('mdbRecallPresent', ev => {
             // TODO manage page reloading (duplicate entries/no entry)
             if (!ev.detail.present.includes(mdbPlayers.me())) {
+                console.log('disable button select area')
                 mdbMasterControl.disable();
                 ev.detail.present.forEach(p => mdbPlayers.add(p, false));
             }

@@ -12,6 +12,5 @@ alors que la globale oui: document.querySelector('#player-me span[title=rank]').
 Test du 27/11 a deux joueurs :
 - Quand un joueur meurt, il devient rouge pour lui mais pas sur écran des autres.
 - mon frère est mort au round 5 et pas moi, pourtant on était tous les deux marqués round 5 dans le menu, alors que je suis devenu rouge au round 6.
-- on voit pas le rank des autres
-- le jeu continue quand on est tous mort
+- on voit pas le rank des autres, voir avec timeout()
 - a la création de la room, c'est centré sur Lyon et pas les joueurs
